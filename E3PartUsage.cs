@@ -1,0 +1,336 @@
+﻿using e3;
+using E3SetAdditionalPart;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Text;
+using System.Xml.Linq;
+
+namespace E3_WGM
+{
+    [DataContract]
+    public class E3PartUsage
+    {
+
+        [DataMember]
+        private List<int> _ids = new List<int>();
+        public List<int> IDs
+        {
+            get { return _ids; }
+            set { }
+        }
+
+        [DataMember]
+        private List<int> _parentIds = new List<int>();
+        public List<int> parentIDs
+        {
+            get { return _parentIds; }
+            set { }
+        }
+
+        private List<int> _netSegmentIds = new List<int>();
+        public List<int> netSegmentIds
+        {
+            get { return _netSegmentIds; }
+            set { }
+        }
+
+        [DataMember]
+        private string _oidMaster = "";
+        public string oidMaster
+        {
+            get { return _oidMaster; }
+            set { _oidMaster = value; }
+        }
+
+        [DataMember]
+        private string _number = "";
+        public string number
+        {
+            get { return _number; }
+            set { _number = value; }
+        }
+
+        [DataMember]
+        private string _rs = "";
+        public string RS
+        {
+            get { return _rs; }
+            set { _rs = value; }
+        }
+
+        [DataMember]
+        private string _unit = "ea";
+        public string unit
+        {
+            get { return _unit; }
+            set { _unit = value; }
+        }
+
+        //[DataMember]
+        private double _amount = 0;
+        [DataMember(Name = "_amount")] // в просмотре ЭСИ и передаваться в JSON должно округляемое значение, но в JSON оно будет по прежнему представлено под именем "_amount".
+        public double amount
+        {
+            get
+            {
+                return Math.Round(_amount + _tolerance, 3, MidpointRounding.AwayFromZero);
+            }
+
+            //get { return _amount; }
+            set { _amount = value; }
+        }
+
+        [DataMember]
+        private int _lineNumber = 0;
+        public int lineNumber
+        {
+            get { return _lineNumber; }
+            set { _lineNumber = value; }
+        }
+
+        [DataMember]
+        private string _entry = "";
+        public string ATR_E3_ENTRY
+        {
+            get { return _entry; }
+            set { _entry = value; }
+        }
+
+        [DataMember]
+        private string _wiretype = "";
+        public string ATR_E3_WIRETYPE
+        {
+            get { return _wiretype; }
+            set { _wiretype = value; }
+        }
+        [DataMember]
+        private List<E3PartOccurrence> _occurrences = new List<E3PartOccurrence>();
+
+        [DataMember]
+        private List<String> _replacements = new List<String>();
+        public List<String> Replacements
+        {
+            get { return _replacements; }
+            set { }
+        }
+
+        /// <summary>
+        ///  если в проекте Изелию в "Раздел спецификации" указали - "Отсутствует", то в просмотр BOMа в Е3 и BOM Windchill такую СЧ не включаем
+        /// </summary>
+        [DataMember]
+        private bool _isForBOM = true;
+        public bool isForBOM
+        {
+            get { return _isForBOM; }
+            set { _isForBOM = value; }
+        }
+
+        [DataMember]
+        private String _state = "";
+        public String State
+        {
+            get { return _state; }
+            set { _state = value; }
+        }
+
+        [DataMember]
+        private String _restrict = ""; // значение атрибута в Windchill "Ограничительный перечень ПКИ"
+        public String Restrict
+        {
+            get { return _restrict; }
+            set { _restrict = value; }
+        }
+
+
+
+        public int idComp { get; set; }
+
+        private double _tolerance = 0;
+        public double Tolerance // допуск длины (дополнительное значение) задаваемый электриками на сегментах цепи
+        {
+            get { return _tolerance; }
+            set { _tolerance = value; }
+        }
+
+
+        public E3PartUsage(Part part)
+        {
+            if (part is E3Part)
+            {
+                this.idComp = (part as E3Part).ID;
+                this.ATR_E3_ENTRY = (part as E3Part).ATR_E3_ENTRY;
+            }
+            else
+            {
+                this.idComp = -1;
+            }
+
+            this.oidMaster = part.oidMaster;
+            this.number = part.number;
+            this.isForBOM = part.isForBOM;
+        }
+
+        public E3PartUsage(Part part, String localUnit)
+        {
+            if (part is E3Part)
+            {
+                this.idComp = (part as E3Part).ID;
+                this.ATR_E3_ENTRY = (part as E3Part).ATR_E3_ENTRY;
+            }
+            else
+            {
+                this.idComp = -1;
+            }
+            this._unit = localUnit; // было "m";
+            this.oidMaster = part.oidMaster;
+            this.number = part.number;
+        }
+
+        public E3PartUsage(E3Cable cable)
+        {
+            this.idComp = -1;
+            this._unit = "m";
+            this.oidMaster = cable.oidMaster;
+            this.number = cable.number;
+            this.ATR_E3_ENTRY = cable.ATR_E3_ENTRY;
+            this.ATR_E3_WIRETYPE = cable.ATR_E3_WIRETYPE;
+        }
+
+        /// <summary>
+        /// Проверяет появился ли новый RefDes у Изделия и если Да, то наращивает количество Изделия для ЭСИ
+        /// </summary>
+        /// <param name="dev"></param>
+        internal void AddOccurrence(e3Device dev)
+        {
+            if (!_occurrences.Exists(x => x.refDes.Equals(dev.GetName())))
+            {
+                _occurrences.Add(new E3PartOccurrence(dev.GetName()));
+
+                //_amount++;
+                if (!String.IsNullOrEmpty(dev.GetAttributeValue(AttrsName.getAttrsName("amountPart"))))
+                {
+                    _amount = _amount + Double.Parse(dev.GetAttributeValue(AttrsName.getAttrsName("amountPart")).Replace('.', ','));
+                }
+                else
+                {
+                    _amount++;
+                }
+
+            }
+        }
+
+        internal void RemoveOccurrence(e3Device dev)
+        {
+            E3PartOccurrence occur = _occurrences.Find((x => x.refDes.Equals(dev.GetName())));
+            _occurrences.Remove(occur);
+        }
+
+        internal void AddAmount() // только для сборок включаемых в родительскую сборку
+        {
+            _amount++;
+        }
+
+        /// <summary>
+        /// Наращивает количество
+        /// </summary>
+        /// <param name="localAmount"></param>
+        internal void AddAmount(double localAmount) // Для материалов и проводов
+        {
+            _amount += localAmount;
+        }
+
+        public string RefDes
+        {
+            get
+            {
+                string refDes = "";
+                foreach (E3PartOccurrence occurrence in _occurrences)
+                {
+                    if (int.TryParse(occurrence.refDes, out int result)) // Согласовано с Данилой и электриками - не выводить в качестве Позиционных обозначений числа, т.к. их генерит сам Е3
+                        return ""; // т.е. refDes был типа "7745"
+
+                    if (refDes != "")
+                    {
+                        refDes += ", ";
+                    }
+                    refDes += occurrence.refDes;
+
+                }
+                return refDes;
+            }
+            set
+            {
+            }
+        }
+
+        internal void updateUsage(Part tempPart)
+        {
+            if (tempPart is E3Part)
+            {
+                this.ATR_E3_ENTRY = (tempPart as E3Part).ATR_E3_ENTRY;
+            }
+            if (tempPart is E3Cable)
+            {
+                this.ATR_E3_ENTRY = (tempPart as E3Cable).ATR_E3_ENTRY;
+                this.ATR_E3_WIRETYPE = (tempPart as E3Cable).ATR_E3_WIRETYPE;
+            }
+            this.oidMaster = tempPart.oidMaster;
+            this.number = tempPart.number;
+        }
+
+        internal void addParentID(int id)
+        {
+            if (!parentIDs.Contains(id))
+            {
+                parentIDs.Add(id);
+            }
+        }
+
+        internal void addNetSegmentID(int id)
+        {
+            if (!netSegmentIds.Contains(id))
+            {
+                netSegmentIds.Add(id);
+            }
+        }
+
+        internal void addID(int id)
+        {
+            if (!IDs.Contains(id))
+            {
+                IDs.Add(id);
+            }
+        }
+
+        public bool isUsageE3Cable()
+        {
+            if (ATR_E3_WIRETYPE != null && ATR_E3_WIRETYPE != "")
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public bool isUsageE3Part()
+        {
+            if (ATR_E3_ENTRY != null && ATR_E3_ENTRY != "" && !isUsageE3Cable())
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public bool isUsageAdditionalPart()
+        {
+            if (parentIDs.Count != 0)
+            {
+                return true;
+            }
+            return false;
+        }
+
+    }
+}
