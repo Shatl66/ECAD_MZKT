@@ -390,19 +390,8 @@ namespace E3_WGM
                     if (matchingUsageFromWch.RS.Equals("Прочие изделия") || matchingUsageFromWch.RS.Equals("Стандартные изделия"))
                     {
                         String wchRestrict = matchingUsageFromWch.Restrict;
-                        String prjRestrict = E3WGMForm.UtilsInstance.restrictProject;
+                        String prjRestrict = E3WGMForm.UtilsInstance.nameContainerWindchill;
                         //Part part = E3WGMForm.UtilsInstance.umens_e3project.Parts.Find(x => x.number == matchingUsageFromWch.number);
-
-                        if (!prjRestrict.Equals("Без ограничений"))
-                        {
-                            if ( (prjRestrict.Equals("20") & !wchRestrict.Equals("20")) || (prjRestrict.Equals("30") & !wchRestrict.Equals("30")) )
-                            {
-                                String nameR;
-                                E3WGMForm.UtilsInstance.restrictNames.TryGetValue(prjRestrict, out nameR);
-                                if (!errorMessages.Contains($"{matchingUsageFromWch.number} {part.name} не входит в ограничительный перечень {nameR}"))
-                                    errorMessages.Add($"{matchingUsageFromWch.number} {part.name} не входит в ограничительный перечень {nameR}");
-                            }
-                        }
 
                     }
                     // End. проверок качества

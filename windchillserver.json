@@ -1,7 +1,7 @@
 {
-  "serverProtocol": "http",
-  "serverName": "wch-test.peleng.jsc.local",
-  "ignoreSSLPolicyErrors": "true",
-  "useRefLinkForDocumentation": "false",
-  "allowUnloadStructure": "true"
+    "serverProtocol": "http",
+    "serverName": "srv-ptc02-devel.mzkt.by",
+    "ignoreSSLPolicyErrors": "true",
+    "useRefLinkForDocumentation": "false",
+    "allowUnloadStructure": "true"
 }

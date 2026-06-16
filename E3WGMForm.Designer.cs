@@ -55,8 +55,8 @@
             // tabControl1
             // 
             this.tabControl1.Controls.Add(this.tabPageProject);
-            this.tabControl1.Controls.Add(this.tabPageStructureBrowser);
-            this.tabControl1.Controls.Add(this.tabPageDocListBrowser);
+//временно           this.tabControl1.Controls.Add(this.tabPageStructureBrowser);
+//временно           this.tabControl1.Controls.Add(this.tabPageDocListBrowser);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 73);
             this.tabControl1.Name = "tabControl1";

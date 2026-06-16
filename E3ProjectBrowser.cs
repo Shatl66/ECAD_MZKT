@@ -24,15 +24,8 @@ namespace E3_WGM
 
         public void RefreshData(E3Assembly umens_e3projec)
         {
-            textBoxNumberProject.Text = umens_e3projec.number;
-            textBoxNameProject.Text = umens_e3projec.name;
-            textBoxRestrict.Text = E3WGMForm.UtilsInstance.restrictProject;
+            textBoxNameIzdWindchill.Text = E3WGMForm.UtilsInstance.nameContainerWindchill;
 
-            if (umens_e3projec.name != "Temp_Name")
-            {
-                textBoxNumberProject.ReadOnly = true;
-                textBoxNameProject.ReadOnly = true;
-            }
         }
 
         /// <summary>

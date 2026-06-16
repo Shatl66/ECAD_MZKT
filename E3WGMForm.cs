@@ -34,13 +34,12 @@ namespace E3_WGM
 
         public E3WGMForm()
         {
-            InitializeComponent();        
+            InitializeComponent();   // TODO MZKT тут временно заблокировал вкладки     
         }
 
 
         private void E3WGMForm_Load(object sender, EventArgs e)
         {
-
             string appDir = AppDomain.CurrentDomain.BaseDirectory;
             string configFile = Path.Combine(appDir, "windchillserver.json");
 
@@ -96,14 +95,6 @@ namespace E3_WGM
             _Utils.typeDocuments = typeDocuments;
 
 
-            Dictionary<string, string> restrictNames = new Dictionary<string, string>();
-            restrictNames.Add("10", "НКУ \"МиАС\"");
-            restrictNames.Add("20", "НКУ \"СКС\"");
-            restrictNames.Add("30", "НКУ \"Космос\"");
-            restrictNames.Add("40", "НКУ \"Композит\"");
-            restrictNames.Add("70", "НКУ \"АС\"");
-            _Utils.restrictNames = restrictNames;
-
             // Подписываем E3WGMForm на событие синхронизации генерируемое кнопкой "Синхронизация"
             e3CommonControl1.SynchronizeClicked += E3CommonControl1_SynchronizeClicked;
 
@@ -113,7 +104,6 @@ namespace E3_WGM
             _Utils.umens_e3project = public_umens_e3project; 
 
             _Utils.ConnectToE3Series();
-            // _Utils.getRestrictivProject(); без выхода из приложения тут не считает новое значение
 
             public_umens_e3project = CreateAndFillUmensE3Project();
             _Utils.DisconnectFromE3Series(); // После вычисления всех данных "отключается" от Е3 чтобы пользователь Е3 мог в нем полноценно работать
@@ -128,7 +118,7 @@ namespace E3_WGM
             // перед каждой синхронизацией очищаем:
             _Utils.errorMessages = new List<string>();
             _Utils.numberPartsForE3ProjectDocument = new List<string>();
-            _Utils.getRestrictivProject();
+            _Utils.getWindchillNameContainer();
             _Utils.dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>();
 
 

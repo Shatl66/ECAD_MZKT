@@ -92,6 +92,12 @@
     <Compile Include="E3StructureBrowser.Designer.cs">
       <DependentUpon>E3StructureBrowser.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormNameContainer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormNameContainer.Designer.cs">
+      <DependentUpon>FormNameContainer.cs</DependentUpon>
+    </Compile>
     <Compile Include="UmensLogger.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="E3WGMForm.cs">
@@ -126,6 +132,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="E3WGMForm.resx">
       <DependentUpon>E3WGMForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormNameContainer.resx">
+      <DependentUpon>FormNameContainer.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

@@ -37,7 +37,7 @@ namespace E3_WGM
 
 
         public string tempPathForDoc { get; internal set; }
-        public string restrictProject { get; internal set; } // Значение атрибута проекта «WCH Ограничительный перечень ПКИ проекта» 
+        public string nameContainerWindchill { get; internal set; } // Значение атрибута проекта «Наименование изделия Windchill» 
 
         public Dictionary<string, string> typeDocuments = null; // устанавливается из E3WGMForms.cs
 
@@ -49,7 +49,6 @@ namespace E3_WGM
 
         public Dictionary<int, List<int>> dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>(); // пары: ID сегмента - ID изделий лежащих/проходящих на/через сегмент
 
-        public Dictionary<string, string> restrictNames = null; // устанавливается из E3WGMForms.cs
         public Utils()
         {
             //ConnectToE3Series();
@@ -1998,16 +1997,59 @@ namespace E3_WGM
             return umens_e3project;
         }
 
-        internal void getRestrictivProject()
+
+        /// <summary>
+        /// Получает или запрашивает имя контейнера в Windchill.
+        /// </summary>
+        internal void getWindchillNameContainer()
         {
-            restrictProject = job.GetAttributeValue("WCH_project_restrictive_list");
+            // Сначала пытаемся прочитать уже сохранённое значение
+            nameContainerWindchill = job.GetAttributeValue("WCH_CONTAINER_NAME");
 
-            if (String.IsNullOrEmpty( restrictProject))
+            // Если атрибут пуст – запрашиваем у пользователя
+            while (string.IsNullOrWhiteSpace(nameContainerWindchill))
             {
-                MessageBox.Show("Заполните атрибут «WCH Ограничительный перечень проекта» допустимым значением из выпадающего списка в параметрах проекта.", "",
-                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+                using (FormNameContainer containerForm = new FormNameContainer()) // Использование using для формы гарантирует освобождение ресурсов
+                {
+                    DialogResult result = containerForm.ShowDialog();
 
+                    if (result == DialogResult.OK)
+                    {
+                        string enteredName = containerForm.containerName;
+
+                        // Дополнительная проверка (например, существование контейнера в Windchill)
+                        if (ValidateContainerName(enteredName))
+                        {
+                            // Сохраняем в атрибут проекта E3
+                            job.SetAttributeValue("WCH_CONTAINER_NAME", enteredName);
+                            nameContainerWindchill = enteredName;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Введённое наименование не прошло проверку. Попробуйте снова.",
+                                            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            // цикл продолжится – форма откроется снова
+                        }
+                    }
+                    else // DialogResult.Cancel (кнопка «Выйти»)
+                    {
+                        MessageBox.Show("Операция прервана пользователем. Программа будет закрыта.",
+                                        "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        Environment.Exit(0);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Проверяет корректность имени контейнера.
+        /// </summary>
+        private bool ValidateContainerName(string name)
+        {
+            // Пример: проверка на непустоту уже выполнена в форме, но можно добавить дополнительные правила.
+            // Например, запретить специальные символы или проверить существование контейнера через API.
+            // Пока просто возвращаем true.
+            return true;
         }
     }
 }
