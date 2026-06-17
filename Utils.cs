@@ -2003,10 +2003,31 @@ namespace E3_WGM
         /// </summary>
         internal void getWindchillNameContainer()
         {
-            // Сначала пытаемся прочитать уже сохранённое значение
+            if (!E3WGMForm.wchHTTPClient.isAuthorization())
+            {
+                WindchillLoginForm wchLogin = new WindchillLoginForm(E3WGMForm.wchHTTPClient);
+                wchLogin.ShowDialog();
+                if (wchLogin.DialogResult.Equals(DialogResult.Cancel))
+                {
+                    DisconnectFromE3Series();
+                    Environment.Exit(0);
+                }
+            }
+
+            // 1. Сначала пытаемся прочитать уже сохранённое значение
             nameContainerWindchill = job.GetAttributeValue("WCH_CONTAINER_NAME");
 
-            // Если атрибут пуст – запрашиваем у пользователя
+            if ( !string.IsNullOrWhiteSpace(nameContainerWindchill))
+            {
+                if (!E3WGMForm.wchHTTPClient.ValidateContainerName(nameContainerWindchill)) // в атрибут могли записать руками неверное название. Проверяем.
+                {
+                    MessageBox.Show("В атрибут проекта \"Наименование изделия Windchill\" занесено наименование которое отсутствует в Windchill. Очистите атрибут и заново запустите программу.",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Environment.Exit(0);
+                }
+            }
+
+            // 2. Если атрибут пуст – запрашиваем у пользователя
             while (string.IsNullOrWhiteSpace(nameContainerWindchill))
             {
                 using (FormNameContainer containerForm = new FormNameContainer()) // Использование using для формы гарантирует освобождение ресурсов
@@ -2018,7 +2039,7 @@ namespace E3_WGM
                         string enteredName = containerForm.containerName;
 
                         // Дополнительная проверка (например, существование контейнера в Windchill)
-                        if (ValidateContainerName(enteredName))
+                        if (E3WGMForm.wchHTTPClient.ValidateContainerName(enteredName))
                         {
                             // Сохраняем в атрибут проекта E3
                             job.SetAttributeValue("WCH_CONTAINER_NAME", enteredName);
@@ -2026,7 +2047,7 @@ namespace E3_WGM
                         }
                         else
                         {
-                            MessageBox.Show("Введённое наименование не прошло проверку. Попробуйте снова.",
+                            MessageBox.Show("Введённое наименование изделия отсутствует в Windchill. Попробуйте снова.",
                                             "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             // цикл продолжится – форма откроется снова
                         }
@@ -2041,15 +2062,5 @@ namespace E3_WGM
             }
         }
 
-        /// <summary>
-        /// Проверяет корректность имени контейнера.
-        /// </summary>
-        private bool ValidateContainerName(string name)
-        {
-            // Пример: проверка на непустоту уже выполнена в форме, но можно добавить дополнительные правила.
-            // Например, запретить специальные символы или проверить существование контейнера через API.
-            // Пока просто возвращаем true.
-            return true;
-        }
     }
 }

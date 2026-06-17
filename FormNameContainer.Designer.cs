@@ -67,6 +67,7 @@
             // buttonExit
             // 
             this.buttonExit.AutoSize = true;
+            this.buttonExit.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.buttonExit.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.buttonExit.Location = new System.Drawing.Point(677, 113);
             this.buttonExit.Name = "buttonExit";
@@ -91,6 +92,7 @@
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "FormNameContainer";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Наименование изделия в Windchill";
             this.ResumeLayout(false);
             this.PerformLayout();
