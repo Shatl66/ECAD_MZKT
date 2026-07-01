@@ -55,8 +55,6 @@
             // tabControl1
             // 
             this.tabControl1.Controls.Add(this.tabPageProject);
-//временно           this.tabControl1.Controls.Add(this.tabPageStructureBrowser);
-//временно           this.tabControl1.Controls.Add(this.tabPageDocListBrowser);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 73);
             this.tabControl1.Name = "tabControl1";
@@ -139,7 +137,7 @@
             this.Controls.Add(this.e3CommonControl1);
             this.Controls.Add(this.E3Log);
             this.Name = "E3WGMForm";
-            this.Text = "ECAD WGM  (Версия )";
+            this.Text = "ECAD WGM  (Версия от 01.07.26)";
             this.Load += new System.EventHandler(this.E3WGMForm_Load);
             this.tabControl1.ResumeLayout(false);
             this.tabPageProject.ResumeLayout(false);

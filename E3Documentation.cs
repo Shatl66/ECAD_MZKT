@@ -46,12 +46,13 @@ namespace E3_WGM
         }
 
         [DataMember]
-        private List<string> _numberPartsForE3PrjDoc = new List<string>();
-        internal List<string> numberPartsForE3ProjectDocument
+        private string _nameContainer;
+        internal string nameContainer
         {
-            get { return _numberPartsForE3PrjDoc; }
-            set { _numberPartsForE3PrjDoc = value; }
+            get { return _nameContainer; }
+            set { _nameContainer = value; }
         }
+
 
         private E3Assembly assembly;
 
@@ -65,9 +66,8 @@ namespace E3_WGM
             this.assembly = assembly;
             this._numberDescribedPart = this.assembly.number;
 
-            this.filePath = tempPathForDoc; // job.GetPath() + job.GetName() + "_PDF\\";
+            this.filePath = tempPathForDoc;
 
-            
             //TODO проверить, почему сразу не взять переданный сюда fileName ?
             if (fileName.EndsWith("e3s"))
                 this.fileName = fileName;

@@ -35,7 +35,9 @@ namespace E3_WGM
         public List<string> errorMessages = new List<string>();
         public List<string> numberPartsForE3ProjectDocument = new List<string>(); // с этими СЧ в Windchill будем связывать WTDocument проекта Е3
 
-
+        /// <summary>
+        /// Временная папка для выгрузки MultiuserProject перед его отправкой
+        /// </summary>
         public string tempPathForDoc { get; internal set; }
         public string nameContainerWindchill { get; internal set; } // Значение атрибута проекта «Наименование изделия Windchill» 
 
@@ -2062,5 +2064,27 @@ namespace E3_WGM
             }
         }
 
+        /// <summary>
+        /// Устанавливает глобальную переменную tempPathForDoc. В ней путь откуда брать файл проекта или документа перед его отправкой в Windchill
+        /// </summary>
+        /// <remarks>
+        /// Для Multiuser проектов это TEMP папка на ПК пользователя. 
+        /// </remarks>
+        /// <param name="appDir"></param>
+        internal void CheckAndCreateTempFolder( String appDir)
+        {
+            string subfolderPath = "";
+
+            if (job.IsMultiuserProject() == 1)
+            {
+                subfolderPath = Path.Combine(appDir, "TEMP"); // Временная папка для выгрузки MultiuserProject перед его отправкой
+                Directory.CreateDirectory(subfolderPath); // создаст если нет, иначе ничего не сделает
+                tempPathForDoc = subfolderPath;
+            }
+            else
+            {
+                tempPathForDoc = job.GetPath();
+            }
+        }
     }
 }

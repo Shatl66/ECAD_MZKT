@@ -68,10 +68,6 @@ namespace E3_WGM
             allWCHServer.TryGetValue("serverName", out serverName);
             allWCHServer.TryGetValue("ignoreSSLPolicyErrors", out ignoreSSLPolicyErrors);
 
-            string subfolderPath = Path.Combine(appDir, "TEMP");
-            Directory.CreateDirectory(subfolderPath); // создаст, если нет, иначе ничего не сделает
-            _Utils.tempPathForDoc = subfolderPath;
-
             wchHTTPClient = new WindchillHTTPClient(serverProtocol, serverName, Boolean.Parse(ignoreSSLPolicyErrors));
 
             configFile = Path.Combine(appDir, "doctype.json");
@@ -96,7 +92,7 @@ namespace E3_WGM
 
 
             // Подписываем E3WGMForm на событие синхронизации генерируемое кнопкой "Синхронизация"
-            e3CommonControl1.SynchronizeClicked += E3CommonControl1_SynchronizeClicked;
+ ///           e3CommonControl1.SynchronizeClicked += E3CommonControl1_SynchronizeClicked;
 
             UmensLogger.LogControl = E3Log;
 
@@ -104,6 +100,8 @@ namespace E3_WGM
             _Utils.umens_e3project = public_umens_e3project; 
 
             _Utils.ConnectToE3Series();
+
+            _Utils.CheckAndCreateTempFolder(appDir);
 
             public_umens_e3project = CreateAndFillUmensE3Project();
             _Utils.DisconnectFromE3Series(); // После вычисления всех данных "отключается" от Е3 чтобы пользователь Е3 мог в нем полноценно работать
@@ -117,11 +115,11 @@ namespace E3_WGM
         {
             // перед каждой синхронизацией очищаем:
             _Utils.errorMessages = new List<string>();
-            _Utils.numberPartsForE3ProjectDocument = new List<string>();
+            ///_Utils.numberPartsForE3ProjectDocument = new List<string>();
             _Utils.getWindchillNameContainer();
             _Utils.dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>();
 
-
+/*
             if (_Utils.FindAllWTPartsFromSelectedFolder())
             {
                 _Utils.SyncronizeE3ProjectDataWithWindchill();
@@ -133,6 +131,7 @@ namespace E3_WGM
                 public_umens_e3project = new E3Assembly("Temp_Number", "Temp_Name");
                 _Utils.umens_e3project = public_umens_e3project;                
             }
+*/
 
             List<string> errorMessages = _Utils.errorMessages;
             // Показываем все ошибки одним MessageBox

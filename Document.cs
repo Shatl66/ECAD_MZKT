@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace E3_WGM
 {
     [DataContract]
-    [KnownType(typeof(E3ProjectDocument))]
+    //[KnownType(typeof(E3ProjectDocument))]
     [KnownType(typeof(E3Documentation))]
     public class Document
     {
@@ -58,19 +58,18 @@ namespace E3_WGM
         }
 
         [DataMember]
-        private string _filePath;
-        internal string filePath
-        {
-            get { return _filePath; }
-            set { _filePath = value; }
-        }
-
-        [DataMember]
         private string _fileName;
         internal string fileName
         {
             get { return _fileName; }
             set { _fileName = value; }
+        }
+
+        private string _filePath;
+        internal string filePath
+        {
+            get { return _filePath; }
+            set { _filePath = value; }
         }
 
         public Document()

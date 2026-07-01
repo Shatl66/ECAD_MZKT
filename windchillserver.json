@@ -1,7 +1,5 @@
 {
     "serverProtocol": "http",
     "serverName": "srv-ptc02-devel.mzkt.by",
-    "ignoreSSLPolicyErrors": "true",
-    "useRefLinkForDocumentation": "false",
-    "allowUnloadStructure": "true"
+    "ignoreSSLPolicyErrors": "true"
 }
