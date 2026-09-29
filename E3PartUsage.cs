@@ -136,15 +136,6 @@ namespace E3_WGM
             set { _state = value; }
         }
 
-        [DataMember]
-        private String _restrict = ""; // значение атрибута в Windchill "Ограничительный перечень ПКИ"
-        public String Restrict
-        {
-            get { return _restrict; }
-            set { _restrict = value; }
-        }
-
-
 
         public int idComp { get; set; }
 

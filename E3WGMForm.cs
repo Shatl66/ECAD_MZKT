@@ -70,6 +70,7 @@ namespace E3_WGM
 
             wchHTTPClient = new WindchillHTTPClient(serverProtocol, serverName, Boolean.Parse(ignoreSSLPolicyErrors));
 
+            /* На MZKT пока не использую. Они задают сами все атрибуты документа
             configFile = Path.Combine(appDir, "doctype.json");
             Dictionary<string, string> typeDocuments = new Dictionary<string, string>();
             if (File.Exists(configFile))
@@ -89,10 +90,10 @@ namespace E3_WGM
                 }
             }
             _Utils.typeDocuments = typeDocuments;
-
+            */
 
             // Подписываем E3WGMForm на событие синхронизации генерируемое кнопкой "Синхронизация"
- ///           e3CommonControl1.SynchronizeClicked += E3CommonControl1_SynchronizeClicked;
+            e3CommonControl1.SynchronizeClicked += E3CommonControl1_SynchronizeClicked;
 
             UmensLogger.LogControl = E3Log;
 
@@ -119,11 +120,11 @@ namespace E3_WGM
             _Utils.getWindchillNameContainer();
             _Utils.dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>();
 
-/*
+
             if (_Utils.FindAllWTPartsFromSelectedFolder())
             {
                 _Utils.SyncronizeE3ProjectDataWithWindchill();
-                _Utils.FindAllWTDocsFromSelectedFolder(); // выбранная пользователем папка в дереве листов уже проверена и определена (selectedRootNodeId) в методе выше            
+                //_Utils.FindAllWTDocsFromSelectedFolder(); // выбранная пользователем папка в дереве листов уже проверена и определена (selectedRootNodeId) в методе выше            
                 _Utils.SyncronizeE3DocsWithWindchill();
             }
             else
@@ -131,7 +132,7 @@ namespace E3_WGM
                 public_umens_e3project = new E3Assembly("Temp_Number", "Temp_Name");
                 _Utils.umens_e3project = public_umens_e3project;                
             }
-*/
+
 
             List<string> errorMessages = _Utils.errorMessages;
             // Показываем все ошибки одним MessageBox

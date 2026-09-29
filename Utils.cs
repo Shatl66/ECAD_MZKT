@@ -41,7 +41,7 @@ namespace E3_WGM
         public string tempPathForDoc { get; internal set; }
         public string nameContainerWindchill { get; internal set; } // Значение атрибута проекта «Наименование изделия Windchill» 
 
-        public Dictionary<string, string> typeDocuments = null; // устанавливается из E3WGMForms.cs
+        //На MZKT пока не использую.Они задают сами все атрибуты документа public Dictionary<string, string> typeDocuments = null; // устанавливается из E3WGMForms.cs
 
         public List<int> pinIDsTerminal = new List<int>(); // перечень ID пинов изделий у которых есть cavity объекты типа Наконечник
         public Dictionary<string, List<int>> pairesNumberTerminalCavityToPinIDs = new Dictionary<string, List<int>>(); //пары: обозначение Наконечника - ID пинов где назначен этот наконечник
@@ -67,8 +67,8 @@ namespace E3_WGM
         {            
             bool found = false;
             int treeId = 0;
-            String treeName;
-            //errorMessages = new List<string>();
+            string treeName;
+            string typeName;
 
             treeId = job.GetActiveTreeID();
             if (treeId == 0)
@@ -101,7 +101,7 @@ namespace E3_WGM
                     return found;
                 }
                 else if( structureNodeCount == 0) {
-                    MessageBox.Show("Сделайте активным узел в дереве листов !", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Сделайте активным узел подпроекта или устройства в дереве листов !", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     DisconnectFromE3Series();
                     return found;
@@ -118,10 +118,11 @@ namespace E3_WGM
                         return found;
                     }
 
-                    string typeName = structureNode.GetTypeName();
-                    if( typeName == ".DOCUMENT_TYPE")
+                    typeName = structureNode.GetTypeName(); // "<Project>" - папка Проекта, "docname" - папка Подпроекта, "<Assignment>" - папка Устройства в Подпроекте, ".DOCUMENT_TYPE" - папка типа документа
+
+                    if ( typeName == "<Project>" || typeName == ".DOCUMENT_TYPE")
                     {
-                        MessageBox.Show("Сделайте активным узел в дереве листов !", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Сделайте активным узел подпроекта или устройства в дереве листов !", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         DisconnectFromE3Series();
                         return found;
@@ -131,19 +132,20 @@ namespace E3_WGM
                 }
             }
 
-            folders = new List<String>();
-            FindSBRecursive( selectedRootNodeId, null);
+            //удалить folders = new List<String>();
+            FindSBRecursive(selectedRootNodeId, null, "");
+
 
             return true;
         }
 
         /// <summary>
-        /// Рекурсивный метод поиска документов типа "Сборочный чертеж".
+        /// Рекурсивный метод поиска документов.
         /// Обходит вниз все дерево листов начиная от папки выделенной пользователем.
         /// </summary>
         /// <param name="nodeId"></param>
         /// <param name="parentAssembly"></param>
-        private void FindSBRecursive(int nodeId, E3Assembly parentAssembly)
+        private void FindSBRecursive(int nodeId, E3Assembly parentAssembly, String startFolder)
         {
             String numberPart;
             String namePart; 
@@ -155,48 +157,20 @@ namespace E3_WGM
                 return;
 
             string typeName = structureNode.GetTypeName();
-            string internName = structureNode.GetInternalName();
-
-            if (typeName == "<Assignment>" || typeName == "<Project>" || typeName == "SubProj") // У папки со схемами - .DOCUMENT_TYPE
-            { // тут каждую папку дерева листов превращаем в Сборочную единицу (СЧ).
+            string internName = structureNode.GetAttributeValue("MZKT_DOCUMENTTYPE"); //structureNode.GetInternalName();
+           
+            
+            if (parentAssembly == null)
+            {
                 numberPart = structureNode.GetName();
+                namePart = structureNode.GetAttributeValue("MZKT_NAME");
 
-                if (folders.Contains(numberPart))
-                {
-                    app.PutError(1, $"Папка {numberPart} входит сама в себя !");
-                    return;
-                }
-                else
-                {
-                    folders.Add(numberPart);
-                }
+                // Настраиваем наш центральный объект umens_e3project на работу с данными от выбранной папки в дереве листов Е3
+                umens_e3project.number = numberPart;
+                umens_e3project.name = namePart;
+                assembly = umens_e3project;
 
-                bool hasAttribute = structureNode.HasAttribute("Naimen_izdel") == 1 ? true : false;
-                namePart = hasAttribute ? structureNode.GetAttributeValue("Naimen_izdel") : "Наименование пока не известно";
-
-                if (parentAssembly == null & typeName == "<Project>")
-                {
-                    // Настраиваем наш центральный объект umens_e3project на работу с данными именно от всего проекта Е3. т.к. именно сам проект выбран в дереве листов Е3
-
-                    umens_e3project.number = job.GetName();
-                    assembly = umens_e3project;
-                }
-                else if (parentAssembly == null)
-                {
-                    // Настраиваем наш центральный объект umens_e3project на работу с данными от выбранной папки в дереве листов Е3
-                    umens_e3project.number = numberPart;
-                    umens_e3project.name = namePart;
-                    assembly = umens_e3project;
-
-                    numberPartsForE3ProjectDocument.Add(numberPart);
-                }
-                else if(parentAssembly != null)
-                {
-                    assembly = new E3Assembly(numberPart, namePart);
-                    parentAssembly.AddUsage(assembly);
-
-                    numberPartsForE3ProjectDocument.Add(numberPart);
-                }
+                numberPartsForE3ProjectDocument.Add(numberPart);
 
                 umens_e3project.Parts.Add(assembly); // накапливаем в кэше все Part-ы по 1 разу
 
@@ -207,12 +181,14 @@ namespace E3_WGM
                 for (int i = 1; i <= childCount; i++)
                 {
                     int childNodeId = childNodeIds[i];
-                    FindSBRecursive(childNodeId, assembly);
+                    FindSBRecursive(childNodeId, assembly, typeName);
                 }
             }
-            else if(internName == "Сборочный чертеж")
-            {   // дошли до папки Тип документа (.DOCUMENT_TYPE) в нее уже вложены схемы. Теперь нужно достать все СЧ из схем               
 
+
+            // 1.1 Перешли к папке "Сборочный чертеж"
+            if (startFolder == "<Assignment>" && internName == "Сборочный чертеж")
+            {
                 //numberPartsForE3ProjectDocument.Add(parentAssembly.number);
 
                 dynamic sAllSheetIds = null;
@@ -221,9 +197,20 @@ namespace E3_WGM
                 for (int i = 1; i <= nAllSheet; i++)
                 {
                     sheet.SetId(sAllSheetIds[i]); // sheet.IsEmbedded() == 1 это листы области чертежа внутри формбоард
-                    managerFindParts( sheet, parentAssembly);                    
-                }                
+                    managerFindParts(sheet, parentAssembly);
+                }
             }
+            // 1.2 Перешли к папке с другими документами
+            else if (startFolder == "<Assignment>" && typeName == ".DOCUMENT_TYPE")
+            {
+                calcDocData( structureNode);
+            }
+            // 2.1 Перешли к папке с документом
+            else if (startFolder == "docname" && typeName == ".DOCUMENT_TYPE" && internName != "Сборочный чертеж") // на всякий случай отбросил СБ, его тут не должно быть !
+            {
+                calcDocData(structureNode);
+            }
+
         }
 
 
@@ -251,7 +238,7 @@ namespace E3_WGM
             dynamic sAllSimbolIds = null;
             int symbolCount = sheet.GetSymbolIds(ref sAllSimbolIds);            
 
-            String typeSheet = sheet.GetAttributeValue(".DOCUMENT_TYPE");
+            String typeSheet = sheet.GetAttributeValue(".DOCUMENT_TYPE"); // ?
             Console.WriteLine(" Вид документа " + typeSheet + ". Символов " + symbolCount);
 
             for (int i = 1; i <= symbolCount; i++)
@@ -302,6 +289,7 @@ namespace E3_WGM
                     netSegmentId = sAllSegmentIds[i];
                     netSegment.SetId(netSegmentId);
 
+                    // в ТЗ МЗКТ этого нет
                     tolerance = double.TryParse(netSegment.GetAttributeValue("Tolerance"),
                                    System.Globalization.NumberStyles.Any,
                                    System.Globalization.CultureInfo.InvariantCulture,
@@ -480,7 +468,7 @@ namespace E3_WGM
                 Boolean incrAmount = true;
                 Boolean isFoundInPartsInIDs = false;
 
-                // ИЗДЕЛИЕ с RS "Отсутствует", не КОМПОНЕНТА ! Добавляем в Parts ! А в показе в WGM и передаче в Windchill будем исключать такие СЧ !!!
+                // ИЗДЕЛИЕ с RS "НЕ СПЕЦИФИЦИРУЮТСЯ", не КОМПОНЕНТА ! Добавляем в Parts ! А в показе в WGM и передаче в Windchill будем исключать такие СЧ !!!
                 String currentDevRS = dev.GetAttributeValue(AttrsName.getAttrsName("atrBomRs"));
 
 
@@ -496,7 +484,7 @@ namespace E3_WGM
                     
                     if ( currentDevRS.Equals(BomRSValues.getBomRSValue((int)BomRSEnum.NO)))
                     {
-                        Console.WriteLine(part.number + " RS Отсутствует !");
+                        Console.WriteLine(part.number + " RS - НЕ СПЕЦИФИЦИРУЮТСЯ !");
                         part.isForBOM = false;
                         incrAmount = false;
                     }
@@ -1023,7 +1011,7 @@ namespace E3_WGM
             double amount = pin.GetLength(); 
             if (amount == 0)
             {
-                string length = pin.GetAttributeValue(AttrsName.getAttrsName("cuttingLength")); //  в настройках Пеленга ->  .CORE_MANUFACTURING_LENGHT
+                string length = pin.GetAttributeValue(AttrsName.getAttrsName("cuttingLength")); //  в настройках ->  .CORE_MANUFACTURING_LENGHT
 
                 if (length != null && length != "")
                 {
@@ -1163,7 +1151,7 @@ namespace E3_WGM
 
                         E3PartUsage usage = null;
 
-                        if (!cavityPart.ATR_BOM_RS.Equals("Материалы"))
+                        if (!cavityPart.ATR_BOM_RS.Equals("МАТЕРИАЛЫ"))
                         {
                             usage = assemblyForPartsFromShemas.AddOrGetUsage(cavityPart, "ea");
                         }
@@ -1361,7 +1349,7 @@ namespace E3_WGM
 
                             E3PartUsage usage = null;
 
-                            if (!additionalPart.ATR_BOM_RS.Equals("Материалы"))
+                            if (!additionalPart.ATR_BOM_RS.Equals("МАТЕРИАЛЫ"))
                             {
                                 usage = assembly.AddOrGetUsage(additionalPart, "ea");                                
                             }
@@ -1410,7 +1398,7 @@ namespace E3_WGM
 
 
 
-
+/*
         internal void FindAllWTDocsFromSelectedFolder()
         {
             FindDocsRecursive(selectedRootNodeId, null, tempPathForDoc);
@@ -1535,6 +1523,51 @@ namespace E3_WGM
 
             return docSuff;
         }
+*/
+
+
+
+        private void calcDocData(e3StructureNode structureNode)
+        {
+            string docType = "", docTypeSuff = "", docNumber = "", docName = "", docFormat = "";
+
+            docType = structureNode.GetAttributeValue("MZKT_DOCUMENTTYPE");
+            docTypeSuff = structureNode.GetAttributeValue("MZKT_DOCUMENTCODE");
+            docName = structureNode.GetAttributeValue("MZKT_DOCUMENTNAME");
+            docNumber = structureNode.GetName(); //TODO именно без пробела.                        
+
+            dynamic sAllSheetIds = null;
+            int nAllSheet = structureNode.GetSheetIds(ref sAllSheetIds);
+
+            for (int i = 1; i <= nAllSheet; i++)
+            {
+                sheet.SetId(sAllSheetIds[i]); // sheet.IsEmbedded() == 1 это листы области чертежа внутри формбоард
+                
+                if (sheet.IsEmbedded() == 0)
+                {
+
+                    docFormat = "A8"; //sheet.GetAttributeValue(AttrsName.getAttrsName("docFormat"));
+                    docFormat = docFormat.Replace("А", "A"); // на всякий случай русскую "А" меняем на английскую
+                    docFormat = docFormat.Replace("х", "x"); // на всякий случай
+                }
+
+
+                E3Documentation doc;
+                if (umens_e3project.Docs.Exists(x => x.number.Equals(docNumber)))
+                {
+                    doc = (E3Documentation)umens_e3project.Docs.Find(x => x.number.Equals(docNumber));
+                }
+                else
+                {
+                    doc = new E3Documentation(umens_e3project, docNumber, docName, job, docNumber, docType, tempPathForDoc); // job.GetPath()
+                    umens_e3project.Docs.Add(doc);
+                }
+
+                doc.AddSheet(sheet, docFormat);
+            }
+        }
+
+
 
 
 
@@ -1542,7 +1575,7 @@ namespace E3_WGM
         /////////////////// Технологические методы /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         /// <summary>
-        /// Для каждой найденной сборки идем в Windchill за недостающей информацией, в том числе - номерами позиций.
+        /// Для каждой найденной сборки идем в Windchill за недостающей информацией. По ТЗ МЗКТ тут пока может быть только 1 сборка
         /// </summary>
         public void SyncronizeE3ProjectDataWithWindchill()
         {
@@ -1650,60 +1683,6 @@ namespace E3_WGM
 
             }
         }
-
-        public void syncE3Cable(E3Cable cable)
-        {
-            if (!E3WGMForm.wchHTTPClient.isAuthorization())
-            {
-                WindchillLoginForm wchLogin = new WindchillLoginForm(E3WGMForm.wchHTTPClient);
-                wchLogin.ShowDialog();
-                if (wchLogin.DialogResult.Equals(DialogResult.Cancel))
-                {
-                    DisconnectFromE3Series();
-                    Environment.Exit(0);
-                }
-            }
-
-            try
-            {
-                string jsonCableFromWindchill = "";
-
-                MemoryStream stream = new MemoryStream();
-                DataContractJsonSerializerSettings settings = new DataContractJsonSerializerSettings();
-                settings.UseSimpleDictionaryFormat = true;
-                DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(E3Cable), settings);
-                ser.WriteObject(stream, cable);
-                stream.Position = 0;
-                StreamReader sr = new StreamReader(stream);
-                string jsonE3Cable = sr.ReadToEnd();
-
-                //В классах Windchill Андреем прописано пространство имен E3WGM. Я пока использую эти же классы, поэтому нужно сопоставлять E3WGM и мое E3_WGM
-                jsonE3Cable = "{\"__type\":\"E3Cable:#E3WGM\"," + jsonE3Cable.Substring(1);
-
-                try
-                {
-                    jsonCableFromWindchill = E3WGMForm.wchHTTPClient.getJSON(jsonE3Cable, "netmarkets/jsp/by/iba/e3/http/findE3Cable.jsp");
-                }
-                catch (Exception ex)
-                {
-                    UmensLogger.Log($"Синхронизация провода/кабеля {cable.number}. Сообщение Windchill: {ex.Message}");
-                    return;
-                }
-
-                // Обратная замена при десериализации. Правильнее было бы прописать везде - [DataContract(Namespace = "E3WGM")]
-                jsonCableFromWindchill = jsonCableFromWindchill.Replace("E3Cable:#E3WGM", "E3Cable:#E3_WGM");
-
-                MemoryStream stream2 = new MemoryStream(Encoding.UTF8.GetBytes(jsonCableFromWindchill));
-                DataContractJsonSerializer ser2 = new DataContractJsonSerializer(typeof(E3Cable), settings);
-                E3Cable cableWch = (E3Cable)ser2.ReadObject(stream2);
-                cable.merge( cableWch, errorMessages, job);
-            }
-            catch (Exception ex)
-            {
-                UmensLogger.Log($"Синхронизация провода/кабеля {cable.number}. Сообщение Windchill: {ex.Message}");
-            }
-        }
-
 
 
         /// <summary>

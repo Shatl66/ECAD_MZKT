@@ -75,6 +75,7 @@ namespace E3_WGM
             }
             catch (Exception ex)
             {
+                E3WGMForm.UtilsInstance.DisconnectFromE3Series();
                 throw new Exception($"Request failed: {ex.Message}", ex);
             }
         }

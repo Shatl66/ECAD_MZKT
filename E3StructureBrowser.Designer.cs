@@ -35,7 +35,6 @@
             this.treeColumnName = new Aga.Controls.Tree.TreeColumn();
             this.treeColumnBomRS = new Aga.Controls.Tree.TreeColumn();
             this.treeColumnAmount = new Aga.Controls.Tree.TreeColumn();
-            this.treeColumnTolerance = new Aga.Controls.Tree.TreeColumn();
             this.treeColumnUnit = new Aga.Controls.Tree.TreeColumn();
             this.treeColumnRefDes = new Aga.Controls.Tree.TreeColumn();
             this.treeColumnEntry = new Aga.Controls.Tree.TreeColumn();
@@ -50,7 +49,6 @@
             this._lineNumber = new Aga.Controls.Tree.NodeControls.NodeTextBox();
             this._refDes = new Aga.Controls.Tree.NodeControls.NodeTextBox();
             this._replacement = new Aga.Controls.Tree.NodeControls.NodeTextBox();
-            this._tolerance = new Aga.Controls.Tree.NodeControls.NodeTextBox();
             this.panel1 = new System.Windows.Forms.Panel();
             this.buttonUploadStructure = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
@@ -67,7 +65,6 @@
             this._treeView.Columns.Add(this.treeColumnName);
             this._treeView.Columns.Add(this.treeColumnBomRS);
             this._treeView.Columns.Add(this.treeColumnAmount);
-            this._treeView.Columns.Add(this.treeColumnTolerance);
             this._treeView.Columns.Add(this.treeColumnUnit);
             this._treeView.Columns.Add(this.treeColumnRefDes);
             this._treeView.Columns.Add(this.treeColumnEntry);
@@ -92,7 +89,6 @@
             this._treeView.NodeControls.Add(this._lineNumber);
             this._treeView.NodeControls.Add(this._refDes);
             this._treeView.NodeControls.Add(this._replacement);
-            this._treeView.NodeControls.Add(this._tolerance);
             this._treeView.SelectedNode = null;
             this._treeView.ShowNodeToolTips = true;
             this._treeView.Size = new System.Drawing.Size(573, 129);
@@ -145,13 +141,6 @@
             this.treeColumnAmount.SortOrder = System.Windows.Forms.SortOrder.None;
             this.treeColumnAmount.TooltipText = null;
             this.treeColumnAmount.Width = 100;
-            // 
-            // treeColumnTolerance
-            // 
-            this.treeColumnTolerance.Header = "Допуск";
-            this.treeColumnTolerance.SortOrder = System.Windows.Forms.SortOrder.None;
-            this.treeColumnTolerance.TooltipText = null;
-            this.treeColumnTolerance.Width = 100;
             // 
             // treeColumnUnit
             // 
@@ -252,13 +241,6 @@
             this._replacement.LeftMargin = 3;
             this._replacement.ParentColumn = this.treeColumnReplacement;
             // 
-            // _tolerance
-            // 
-            this._tolerance.DataPropertyName = "Tolerance";
-            this._tolerance.IncrementalSearchEnabled = true;
-            this._tolerance.LeftMargin = 3;
-            this._tolerance.ParentColumn = this.treeColumnTolerance;
-            // 
             // panel1
             // 
             this.panel1.Controls.Add(this.buttonUploadStructure);
@@ -318,7 +300,5 @@
         private Aga.Controls.Tree.NodeControls.NodeTextBox _refDes;
         private Aga.Controls.Tree.TreeColumn treeColumnReplacement;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _replacement;
-        private Aga.Controls.Tree.TreeColumn treeColumnTolerance;
-        private Aga.Controls.Tree.NodeControls.NodeTextBox _tolerance;
     }
 }

@@ -100,7 +100,7 @@ namespace E3_WGM
                         UmensLogger.Log($"Выгрузка структуры {part.number} в Windchill завершена");
 
                         // 2. Выполнится, если 1. завершилась успешно
-                        jsonAssemblyFromWindchill = E3WGMForm.wchHTTPClient.getJSON(jsonProject, "netmarkets/jsp/by/iba/e3/http/calculateLineNumbers_Umens.jsp");
+                        //jsonAssemblyFromWindchill = E3WGMForm.wchHTTPClient.getJSON(jsonProject, "netmarkets/jsp/by/iba/e3/http/calculateLineNumbers_Umens.jsp");
 
                         // Обратная замена при десериализации. Правильнее было бы прописать везде - [DataContract(Namespace = "E3WGM")]
                         jsonAssemblyFromWindchill = jsonAssemblyFromWindchill.Replace("E3Assembly:#E3WGM", "E3Assembly:#E3_WGM");
@@ -108,20 +108,19 @@ namespace E3_WGM
                         MemoryStream stream2 = new MemoryStream(Encoding.UTF8.GetBytes(jsonAssemblyFromWindchill));
                         DataContractJsonSerializer ser2 = new DataContractJsonSerializer(typeof(E3Assembly), settings);
 
-                        // ниже все ради номеров позиций уже расчитанных в Windchill и возвращенных сюда
                         E3Assembly assmWch = (E3Assembly)ser2.ReadObject(stream2);
                         e3Job job = E3WGMForm.UtilsInstance.ConnectToE3Series(); // нужен только job
                         ((E3Assembly)part).merge(assmWch, E3WGMForm.UtilsInstance.errorMessages, job);
 
                         Refresh(); // перерисовываем таблицу с ЭСИ, сразу отрисуются номера позиций полученные из Windchill
 
-                        UmensLogger.Log($"Расчет позиций для {part.number} в Windchill завершен");
+                        //UmensLogger.Log($"Расчет позиций для {part.number} в Windchill завершен");
                         
                         E3WGMForm.UtilsInstance.DisconnectFromE3Series();
                     }
                 }
                 
-                UmensLogger.Log($"Выгрузка структуры всего проекта {E3WGMForm.public_umens_e3project.number} в Windchill завершена");
+                //UmensLogger.Log($"Выгрузка структуры всего проекта {E3WGMForm.public_umens_e3project.number} в Windchill завершена");
                // buttonUploadStructure.Enabled = false; // не даем повторно отправить данные. После синхронизации кнопка опять станет доступной
             }
             catch (Exception ex)

@@ -70,7 +70,7 @@ namespace E3_WGM
         /// <summary>
         /// Обновляет полученными из Windchill данными все объекты нашей Е3 сборки.
         /// Наполняет список ошибок объектами которые не были найдены в Windchill
-        /// Формирует значение атрибута "суммарная позиция" для каждого обекта нашей Е3 сборки.
+        /// Формирует значение атрибута "суммарная позиция" для каждого объекта нашей Е3 сборки.
         /// </summary>
         /// <param name="asmWch"></param>
         /// <param name="errorMessages"></param>
@@ -377,8 +377,7 @@ namespace E3_WGM
                     }
 
                     String wchState = matchingUsageFromWch.State;
-                    if (wchState.Equals("Запрещено к применению") || wchState.Equals("Аннулировано") ||
-                        wchState.Equals("Снято с производства")) // || wchState.Equals("Не в ограничительном перечне")
+                    if (wchState.Equals("Аннулировано")) //  || wchState.Equals("Снято с производства"))
                     {
                         if (!errorMessages.Contains($"Изделие {obj} {part.name} {wchState} в Windchill"))
                             errorMessages.Add($"Изделие {obj} {part.name} {wchState} в Windchill");
@@ -386,14 +385,6 @@ namespace E3_WGM
                         //continue; поз. номер выводим !
                     }
 
-
-                    if (matchingUsageFromWch.RS.Equals("Прочие изделия") || matchingUsageFromWch.RS.Equals("Стандартные изделия"))
-                    {
-                        String wchRestrict = matchingUsageFromWch.Restrict;
-                        String prjRestrict = E3WGMForm.UtilsInstance.nameContainerWindchill;
-                        //Part part = E3WGMForm.UtilsInstance.umens_e3project.Parts.Find(x => x.number == matchingUsageFromWch.number);
-
-                    }
                     // End. проверок качества
 
 
