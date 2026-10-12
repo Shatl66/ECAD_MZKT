@@ -80,6 +80,12 @@ namespace E3_WGM
             {
                 //    throw new Exception("ОШИБКА: Не все составные части созданы в Windchill") я им уже сообщил об этом. Тут повторно не сообщаю, Windchill сам вернет ошибку
 
+                if (E3WGMForm.public_umens_e3project.Parts.Count() == 1)
+                {
+                    UmensLogger.Log("Пустая структура не выгружается !");
+                    return;
+                }
+
                 foreach (Part part in E3WGMForm.public_umens_e3project.Parts)
                 {
                     if (part is E3Assembly)

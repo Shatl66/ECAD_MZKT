@@ -1,10 +1,10 @@
 {
     "partNumber": "docname",
-    "docType": ".DOCUMENT_TYPE",
-    "docFormat": "SheetType",
+    "docType": "MZKT_DOCUMENTTYPE",
+    "docFormat": "sheet_format",
     "docTypeSuff": "MZKT_DOCUMENTCODE",
     "atrBomRs": "WCH_bomrs",
-    "lineNumber": "SumBomPos",
+    "lineNumber": "BOMPoz_Summ",
     "additionalPart": "AdditionalPart",
     "dlina": "dlina",
     "length": "Length",

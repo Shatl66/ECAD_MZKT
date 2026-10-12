@@ -418,8 +418,6 @@ namespace E3_WGM
             e3Device dev = job.CreateDeviceObject();
             int devLineNumber = 0;
             String tempLineNumber;
-            bool necesseryValue = false;
-            List<int> listReplacementsAddPart; // список для взаимозамен в 150% BOM
             String currentDevRS;
 
 
@@ -444,11 +442,6 @@ namespace E3_WGM
                                                             
                     currentDevRS = dev.GetAttributeValue(AttrsName.getAttrsName("atrBomRs"));
 
-                    // Придумка Пеленга о 150% BOM. Проверяем их признак, т.е. в ЭСИ будет несколько записей с 0 количеством и ЕИ "По необходимости"
-                    listReplacementsAddPart = new List<int>();
-                    necesseryValue = dev.GetAttributeValue("IfNecessary") == "1" ? true : false;
-
-
                     //if (currentE3PartUsage.isForBOM == true)
                     if (!currentDevRS.Equals(BomRSValues.getBomRSValue((int)BomRSEnum.NO))) // т.е. у текущего изделия RS НЕ равен "Отсутствует"
                     {
@@ -460,32 +453,16 @@ namespace E3_WGM
                     {
                         if (usageWithParent.parentIDs.Contains(itemId))
                         {
-                            if (necesseryValue == false) // у device обычные доп.части
+                            if (!lineNumbers.Contains(usageWithParent.lineNumber))
                             {
-                                if (!lineNumbers.Contains(usageWithParent.lineNumber))
-                                {
-                                    lineNumbers.Add(usageWithParent.lineNumber); // Добавили Позицию Дополнительной части 
-                                }
-                            }
-                            else
-                            {
-                                listReplacementsAddPart.Add(usageWithParent.lineNumber); // накапливаем, чтобы потом сделать типа "15 или 16"
+                               lineNumbers.Add(usageWithParent.lineNumber); // Добавили Позицию Дополнительной части 
                             }
                         }
                     }
 
 
                     // 2. Заносим данные в атрибуты
-
-                    if (necesseryValue == false)  // у device обычные доп.части
-                    {
-                        tempLineNumber = string.Join(" \r\n", lineNumbers.OrderBy(x => x)); // упорядочивает номера позиций по возрастанию и по правилу Е3, каждый номер должен располагаться строчкой ниже
-                    }
-                    else
-                    {
-                        tempLineNumber = string.Join(" или ", listReplacementsAddPart.OrderBy(x => x)); // Номера у самого Изделия нет, т.к. оно фэйковое и создано для 150% ЭСИ
-                    }
-
+                    tempLineNumber = string.Join(" \r\n", lineNumbers.OrderBy(x => x)); // упорядочивает номера позиций по возрастанию и по правилу Е3, каждый номер должен располагаться строчкой ниже
 
                     // переходим к Изделию у которого в атрибут "Суммарная позиция" и занесем рассчитанное значение.
                     if (!String.IsNullOrEmpty(currentE3PartUsage.ATR_E3_WIRETYPE)) //TODO с таким не сталкивался, чтобы проводу назначали Доп.части

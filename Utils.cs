@@ -29,7 +29,6 @@ namespace E3_WGM
 
         private List<string> folders = null; // для проверки от зацикливания, когда папка с именем "Х" может входить в себя же ниже по структуре папок.        
         private E3Assembly assemblyForPartsFromShemas = null;
-        private int selectedRootNodeId = 0;
 
         public E3Assembly umens_e3project;
         public List<string> errorMessages = new List<string>();
@@ -63,7 +62,7 @@ namespace E3_WGM
             */
         }
 
-        public bool FindAllWTPartsFromSelectedFolder()
+        public bool FindAllObjectsFromSelectedFolder()
         {            
             bool found = false;
             int treeId = 0;
@@ -118,9 +117,9 @@ namespace E3_WGM
                         return found;
                     }
 
-                    typeName = structureNode.GetTypeName(); // "<Project>" - папка Проекта, "docname" - папка Подпроекта, "<Assignment>" - папка Устройства в Подпроекте, ".DOCUMENT_TYPE" - папка типа документа
+                    typeName = structureNode.GetTypeName(); // "<Project>" - папка Проекта, "MZKT_SUBPROJ_DESCRIPTION" - папка Подпроекта, "MZKT_DOCUMENTNUMBER" - папка с номером для документов, "<Assignment>" - папка Устройства в Подпроекте, "MZKT_DOCUMENTTYPE" - папка типа документа
 
-                    if ( typeName == "<Project>" || typeName == ".DOCUMENT_TYPE")
+                    if ( typeName == "<Project>" || typeName == "MZKT_DOCUMENTNUMBER" || typeName == "MZKT_DOCUMENTTYPE")
                     {
                         MessageBox.Show("Сделайте активным узел подпроекта или устройства в дереве листов !", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -128,91 +127,161 @@ namespace E3_WGM
                         return found;
                     }
 
-                    selectedRootNodeId = structureNodeIds[1];
                 }
             }
 
-            //удалить folders = new List<String>();
-            FindSBRecursive(selectedRootNodeId, null, "");
+
+            // Настраиваем наш центральный объект umens_e3project на работу с данными от выбранной папки в дереве листов Е3
+            string numberPart = structureNode.GetName();
+            string namePart = structureNode.GetAttributeValue("MZKT_DOCUMENTNAME");            
+            umens_e3project.number = numberPart;
+            umens_e3project.name = namePart;
+            //numberPartsForE3ProjectDocument.Add(numberPart); ?
+            umens_e3project.Parts.Add( umens_e3project); // начинаем накапливать в кэше все Part-ы по 1 разу
+
+
+
+            if (typeName == "<Assignment>")
+            {
+                FindSB(structureNode, true); // вычисляем БОМ
+                FindSB(structureNode, false); // вычисляем Сборочный чертеж
+            }
+            else if (typeName == "MZKT_SUBPROJ_DESCRIPTION")
+                FindNumberDocFolders(structureNode);
 
 
             return true;
         }
 
-        /// <summary>
-        /// Рекурсивный метод поиска документов.
-        /// Обходит вниз все дерево листов начиная от папки выделенной пользователем.
-        /// </summary>
-        /// <param name="nodeId"></param>
-        /// <param name="parentAssembly"></param>
-        private void FindSBRecursive(int nodeId, E3Assembly parentAssembly, String startFolder)
+
+        private void FindSB(e3StructureNode assignmentNode, Boolean isBom)
         {
-            String numberPart;
-            String namePart; 
-            E3Assembly assembly = null;            
 
-            structureNode.SetId(nodeId);
+            e3StructureNode sbNode = job.CreateStructureNodeObject();
 
-            if (structureNode.IsLocked() == 1) // если папка в проекте заблокирована, то не обрабатываем включенные в нее объекты.
+
+            if (assignmentNode.IsLocked() == 1) // если папка в проекте заблокирована, то не обрабатываем включенные в нее объекты.
                 return;
 
-            string typeName = structureNode.GetTypeName();
-            string internName = structureNode.GetAttributeValue("MZKT_DOCUMENTTYPE"); //structureNode.GetInternalName();
-           
+
+            // Получаем дочерние узлы (папки)
+            dynamic childNodeIds = null;
+            int childCount = assignmentNode.GetStructureNodeIds(ref childNodeIds);
+
+            //TODO должно быть не больше 1 папки
+            if (childCount != 1)
+                return;
             
-            if (parentAssembly == null)
+            int childNodeId = childNodeIds[1]; // в [0] E3 заносит null
+            sbNode.SetId(childNodeId);
+
+            if (sbNode.IsLocked() == 1) // если папка в проекте заблокирована, то не обрабатываем включенные в нее объекты.
+                return;
+
+            //TODO и это должна быть папка с СБ
+            if (!sbNode.GetInternalName().Equals("Сборочный чертеж"))
+                return;
+
+            if (isBom == true)
             {
-                numberPart = structureNode.GetName();
-                namePart = structureNode.GetAttributeValue("MZKT_NAME");
-
-                // Настраиваем наш центральный объект umens_e3project на работу с данными от выбранной папки в дереве листов Е3
-                umens_e3project.number = numberPart;
-                umens_e3project.name = namePart;
-                assembly = umens_e3project;
-
-                numberPartsForE3ProjectDocument.Add(numberPart);
-
-                umens_e3project.Parts.Add(assembly); // накапливаем в кэше все Part-ы по 1 разу
-
-                // Получаем дочерние узлы
-                dynamic childNodeIds = null;
-                int childCount = structureNode.GetStructureNodeIds(ref childNodeIds);
-
-                for (int i = 1; i <= childCount; i++)
-                {
-                    int childNodeId = childNodeIds[i];
-                    FindSBRecursive(childNodeId, assembly, typeName);
-                }
-            }
-
-
-            // 1.1 Перешли к папке "Сборочный чертеж"
-            if (startFolder == "<Assignment>" && internName == "Сборочный чертеж")
-            {
-                //numberPartsForE3ProjectDocument.Add(parentAssembly.number);
-
                 dynamic sAllSheetIds = null;
-                int nAllSheet = structureNode.GetSheetIds(ref sAllSheetIds);
+                int nAllSheet = sbNode.GetSheetIds(ref sAllSheetIds);
                 //app.PutInfo(0, $"имеем дочерних схем - {nAllSheet}");
                 for (int i = 1; i <= nAllSheet; i++)
                 {
                     sheet.SetId(sAllSheetIds[i]); // sheet.IsEmbedded() == 1 это листы области чертежа внутри формбоард
-                    managerFindParts(sheet, parentAssembly);
+                    managerFindParts(sheet, umens_e3project);
                 }
             }
-            // 1.2 Перешли к папке с другими документами
-            else if (startFolder == "<Assignment>" && typeName == ".DOCUMENT_TYPE")
+            else
             {
-                calcDocData( structureNode);
-            }
-            // 2.1 Перешли к папке с документом
-            else if (startFolder == "docname" && typeName == ".DOCUMENT_TYPE" && internName != "Сборочный чертеж") // на всякий случай отбросил СБ, его тут не должно быть !
-            {
-                calcDocData(structureNode);
+                calcDocData(sbNode, umens_e3project.number, umens_e3project.name);
             }
 
+            sbNode = null; // чисто отключаемся от Е3
         }
 
+
+        private void FindNumberDocFolders(e3StructureNode subPrjNode)
+        {
+            e3StructureNode structureNumberNode = job.CreateStructureNodeObject();
+            e3StructureNode structureDocTypeNode = job.CreateStructureNodeObject();
+
+            // Получаем дочерние узлы (папки с номерами для документов)
+            dynamic childNodeIds = null;
+            int childCount = subPrjNode.GetStructureNodeIds(ref childNodeIds);
+
+            for (int i = 1; i <= childCount; i++)
+            {
+                int childNodeId = childNodeIds[i];
+                structureNumberNode.SetId(childNodeId); // стали на папку с Номером
+
+                if (structureNumberNode.IsLocked() == 1)
+                    continue;
+
+                string folderTypeName = structureNumberNode.GetTypeName();
+                if (folderTypeName != "MZKT_DOCUMENTNUMBER")
+                    continue; // отбрасываем "<Assignment>"
+
+                string partNumber = structureNumberNode.GetName();
+                string partName = structureNumberNode.GetAttributeValue("MZKT_DOCUMENTNAME");
+
+                // Получаем дочерние узлы (папки с типами документов)
+                dynamic childIds = null;
+                int childCnt = structureNumberNode.GetStructureNodeIds(ref childIds);
+
+                for (int k = 1; k <= childCnt; k++)
+                {
+                    int childId = childIds[k];
+                    structureDocTypeNode.SetId(childId); // стали на папку с типом документа
+
+                    calcDocData(structureDocTypeNode, partNumber, partName);
+                }
+            }
+
+            structureNumberNode = null;
+            structureDocTypeNode = null;
+        }
+
+
+        private void calcDocData(e3StructureNode docTypeNode, string partNumber, string partName)
+        {
+            string docType = "", docTypeSuff = "", docNumber = "", docName = "", docFormat = "";
+
+            docType = docTypeNode.GetName();
+            docTypeSuff = docTypeNode.GetAttributeValue("MZKT_DOCUMENTCODE");
+            docName = partName;
+            docNumber = partNumber + docTypeSuff;
+
+            dynamic sAllSheetIds = null;
+            int nAllSheet = docTypeNode.GetSheetIds(ref sAllSheetIds);
+
+            for (int i = 1; i <= nAllSheet; i++)
+            {
+                sheet.SetId(sAllSheetIds[i]); // sheet.IsEmbedded() == 1 это листы области чертежа внутри формбоард
+
+                if (sheet.IsEmbedded() == 0)
+                {
+                    docFormat = sheet.GetAttributeValue(AttrsName.getAttrsName("docFormat"));
+                    docFormat = docFormat.Replace("А", "A"); // на всякий случай русскую "А" меняем на английскую
+                    docFormat = docFormat.Replace("х", "x"); // на всякий случай
+                }
+
+
+                E3Documentation doc;
+                if (umens_e3project.Docs.Exists(x => x.number.Equals(docNumber)))
+                {
+                    doc = (E3Documentation)umens_e3project.Docs.Find(x => x.number.Equals(docNumber));
+                }
+                else
+                {
+                    doc = new E3Documentation(umens_e3project, docNumber, docName, job, docNumber, docType, tempPathForDoc); // job.GetPath()
+                    umens_e3project.Docs.Add(doc);
+                }
+
+                doc.AddSheet(sheet, docFormat);
+            }
+        }
 
 
         //-----------------------------------------Start вычисления СЧ-ей из схем для BOM Windchill  ------------------------------------------------------------------------------------
@@ -237,9 +306,8 @@ namespace E3_WGM
             // 1.
             dynamic sAllSimbolIds = null;
             int symbolCount = sheet.GetSymbolIds(ref sAllSimbolIds);            
-
-            String typeSheet = sheet.GetAttributeValue(".DOCUMENT_TYPE"); // ?
-            Console.WriteLine(" Вид документа " + typeSheet + ". Символов " + symbolCount);
+            
+            Console.WriteLine(" Лист " + sheet.GetName() + ". Символов " + symbolCount);
 
             for (int i = 1; i <= symbolCount; i++)
             {
@@ -287,7 +355,7 @@ namespace E3_WGM
                 try
                 {
                     netSegmentId = sAllSegmentIds[i];
-                    netSegment.SetId(netSegmentId);
+                    netSegment.SetId(netSegmentId);                    
 
                     // в ТЗ МЗКТ этого нет
                     tolerance = double.TryParse(netSegment.GetAttributeValue("Tolerance"),
@@ -332,6 +400,7 @@ namespace E3_WGM
                     double segmentManufLength = netSegment.GetManufacturingLength();
                     var symbolsOnLines = new List<int>();
 
+             //E3WGMForm.UtilsInstance.app.PutInfo(0, "segment", netSegmentId);
 
                     dynamic connectLineIds = null;
                     int connectLineCount = netSegment.GetConnectLineIds(ref connectLineIds); // больше 1 линии в тестовом проекте не встречалось
@@ -700,53 +769,10 @@ namespace E3_WGM
 
 
         /// <summary>
-        /// Обрабатывает устройство, отсутствующее в библиотеке компонентов. ? Провода
-        /// </summary>
-        private void ProcessDeviceWithoutComponent(e3Device dev)
-        {
-            //app.PutInfo(0, $"Изделие {dev.GetName()}", dev.GetId());
-
-            if (dev.IsCable() == 1) // По dev.GetId() E3 переходит к папке "Провода" в дереве изделий.
-            {
-                string assignment = dev.GetAssignment().Trim();
-
-                if (string.IsNullOrEmpty(assignment))
-                {
-                    errorMessages.Add($"Для Компонента ДСЕ Жгута '{dev.GetName()}' не задано поле \"Устройство\".");
-                    return;
-                }
-
-                ProcessPinsForCableDevice(dev, assemblyForPartsFromShemas);
-            }
-            else if (dev.IsCable() == 0)
-            {
-                if (dev.IsWireGroup() == 1)
-                {
-                    ProcessPins(dev);
-                }
-                else if (dev.IsTerminalBlock() == 1)
-                {
-                    ProcessTerminalBlock(dev);
-                }
-                else if (dev.IsTerminal() == 1)
-                {
-                    //app.PutInfo(0, $"Доработать Наконечник !", dev.GetId());
-                    errorMessages.Add("Доработать код !");
-                }
-
-            }
-            else
-            {
-                errorMessages.Add($"Компонент {dev.GetName()} отсутствует в библиотеке");
-            }
-        }
-
-
-        /// <summary>
         /// <para>Обрабатывает все пины изделия с целью нахождения всех жил подключенных к ним.</para>
-        /// <para>Цель 1 - обнаружить провода которых нет возможности вынести на СБ чертеж (заземление), но которые нужны в ЭСИ</para>
+        /// <para>Задача 1 - обнаружить провода которых нет возможности вынести на СБ чертеж (заземление), но которые нужны в ЭСИ</para>
         /// (При обработке сегментов цепи, как это делается в другом месте этого класса, эти провода не обнаруживаются)
-        /// <para>Цель 2 - Найти и обработать все cavity объекты</para>
+        /// <para>Задача 2 - Найти и обработать все cavity объекты</para>
         /// </summary>
         private void ProcessPins(e3Device devIzdelie)
         {
@@ -767,82 +793,19 @@ namespace E3_WGM
 
 
                     // Ситуация - 21 провод входит в вилку на 20 контактов.
-                    // Ответ Данилы - Правильно так как говорит заказчик)), а Пеленг просит считать уплотнители по проводам... UniSP можно настроить и на провода, а не на выводы.
+                    // Ответ Данилы - Правильно так как говорит заказчик : считать уплотнители по проводам или по контактам... UniSP можно настроить и на провода, а не на выводы.
                     dynamic sCoreIds = null;
-                    int countCore = pinIzdelie.GetCoreIds( sCoreIds);
+                    int countCore = pinIzdelie.GetCoreIds( ref sCoreIds);
+                    
+                    // Задача 2
                     AddCavityOfCable(pinIzdelie, devIzdelie.GetId(), countCore);
 
 
-                    // сначала гарантированно обнуляем эти атрибуты у всех пинов изделий
-                    pinIzdelie.SetAttributeValue("TipPosition", "0"); 
-                    pinIzdelie.SetAttributeValue("SealerPosition", "0");
-
-                    // Start наполнения списков pairesNumberTerminalCavityToPinIDs и pairesNumberSealCavityToPinIDs. 
-                    // Эти списки будут позже использоваться для заполнения атрибутов пинов изделий номерами позиций Наконечников и Уплотнителей из ЭСИ
-                    dynamic cavities = null;
-                    int nTerminalCavityes = pinIzdelie.GetCavityPartIds(out cavities, 1); // ,1 - Ищем Наконечники назначенные пину изделия
-                    
-                    for (int k = 1; k <= nTerminalCavityes; k++)
-                    {
-                        int cavId = cavity.SetId(cavities[k]);
-                        if (cavId != 0)
-                        {
-                            //Console.WriteLine("TERMINAL cavity" + "\t " + cavity.GetValue());
-                            //app.PutInfo(0, $" TERMINAL cavity {cavity.GetValue()}, пин {pinIzdelie.GetName()}", pinIdIzdelie);
-
-                            if (String.IsNullOrEmpty(cavity.GetValue()))
-                                continue;
-
-                            if (pairesNumberTerminalCavityToPinIDs.TryGetValue(cavity.GetValue(), out var terminalIds))
-                            {
-                                if( !terminalIds.Contains( cavId))
-                                    terminalIds.Add(cavId); 
-                            }
-                            else
-                            {
-                                terminalIds = new List<int> { cavId };
-                                pairesNumberTerminalCavityToPinIDs.Add(cavity.GetValue(), terminalIds); // от terminalIds легко потом перейдем к пинам изделий
-                            }
-                        }
-                    }
-
-                    cavities = null;
-                    int nSealCavityes = pinIzdelie.GetCavityPartIds(out cavities, 2); // ,2 - Ищем Уплотнители назначенные пину изделия
-
-                    for (int k = 1; k <= nSealCavityes; k++)
-                    {
-                        int cavId = cavity.SetId(cavities[k]);
-                        if (cavId != 0)
-                        {                            
-                            //app.PutInfo(0, $" SEAL cavity {cavity.GetValue()}, пин {pinIzdelie.GetName()}", pinIdIzdelie);
-
-                            if (String.IsNullOrEmpty(cavity.GetValue()))
-                                continue;
-
-                            if (pairesNumberSealCavityToPinIDs.TryGetValue(cavity.GetValue(), out var sealIds))
-                            {
-                                if( !sealIds.Contains( cavId))
-                                    sealIds.Add(cavId);
-                            }
-                            else
-                            {
-                                sealIds = new List<int> { cavId };
-                                pairesNumberSealCavityToPinIDs.Add(cavity.GetValue(), sealIds); // от sealIds легко потом перейдем к пинам изделий
-                            }                            
-                        }
-                    }
-                 // End наполнения списков
-
-
-                    dynamic sAllCoreIds = null;
-                    int coreCount = pinIzdelie.GetCoreIds(ref sAllCoreIds);
-
-                    //app.PutInfo(0, $" Net Segment {netSegment.GetName()}. Core {coreCount}", netSegment.GetId());
-
+                    // Задача 1
                     // Определяем к чему относится жила: к одиночному проводу, или к кабелю
-                    for (int k = 1; k <= coreCount; k++)
+                    for (int k = 1; k <= countCore; k++)
                     {
-                        coreId = sAllCoreIds[k];
+                        coreId = sCoreIds[k];
                         core.SetId(coreId);
                         //app.PutInfo(0, $" pinIzdelie {pinIzdelie.GetName()}    Имя провода {core.GetName()}", core.GetId());
                         devId = dev.SetId(coreId); // где dev это Кабель к которому принадлежит жила.
@@ -965,21 +928,21 @@ namespace E3_WGM
                     amount = calculateLenghtWire( pin);
 
                     // 1. пункт 33 доп. требований
-                    double pinLT = amount + tolerance;
-                    pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
-                    double testLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
+                    //double pinLT = amount + tolerance;
+                    //pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
+                    //double testLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
 
                 }
                 else
                 {
                     // 2. пункт 33 доп. требований
-                    if (tolerance > 0)
-                    {
-                        double pinLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
-                        pinLT = pinLT + tolerance; // суммируем допуски
-                        pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
-                        double testLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
-                    }
+                    //if (tolerance > 0)
+                    //{
+                      //  double pinLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
+                      //  pinLT = pinLT + tolerance; // суммируем допуски
+                      //  pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
+                      //  double testLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
+                    //}
                 }
 
 
@@ -1116,10 +1079,11 @@ namespace E3_WGM
         private void AddCavityOfCable( e3Pin pin, int izdelieID, int countCore)
         {
             e3CavityPart cavity = job.CreateCavityPartObject();
-            String numberCavityPart = "";
+            e3Component comp = job.CreateComponentObject(); // Компонент это объект в БД
+            string valueCavityPart = "";
 
             dynamic cavities = null;
-            int nAllCavityes = pin.GetCavityPartIds(out cavities, 0); // 2 - это all CavityParts of type Wire Seal, т.е. уплотнители 
+            int nAllCavityes = pin.GetCavityPartIds(out cavities, 0); 
 
             for (int k = 1; k <= nAllCavityes; k++)
             {
@@ -1130,23 +1094,28 @@ namespace E3_WGM
                         continue;
 
                     AdditionalPart cavityPart = new AdditionalPart(); //TODO использую пока тип AdditionalPart() не по назначению
-                    numberCavityPart = cavity.GetValue();
-                    cavityPart.number = numberCavityPart; // этот объект с заполненным только number будем передавать в Windchill для его там поиска
+                    valueCavityPart = cavity.GetValue();
 
-                    // для реализации п.20 доп.требований (у контакта атрибут для позиции уплотнителя - "SealerPosition", Атрибут для позиции наконечника -"TipPosition"
+                    int compId = comp.Search(valueCavityPart, "CCCC");
 
+                    if (compId != 0)
+                    {
+                        valueCavityPart = comp.GetAttributeValue("WCH_number");
+                        cavityPart.number = valueCavityPart; // этот объект с заполненным только number будем передавать в Windchill для его там поиска
+                    }
+                    else
+                        cavityPart.number = valueCavityPart;                    
 
                     try
                     {
-
-                        if (!umens_e3project.Parts.Exists(x => x.number == numberCavityPart))
+                        if (!umens_e3project.Parts.Exists(x => x.number == valueCavityPart))
                         {
                             synchronizationAdditionalPartWithWindchill(cavityPart); // cavityPart дополняется значениями из Windchill
                             umens_e3project.Parts.Add(cavityPart);
                         }
                         else
                         {
-                            cavityPart = (AdditionalPart)umens_e3project.Parts.Find(x => x.number == numberCavityPart);
+                            cavityPart = (AdditionalPart)umens_e3project.Parts.Find(x => x.number == valueCavityPart);
                         }
 
                         E3PartUsage usage = null;
@@ -1161,13 +1130,7 @@ namespace E3_WGM
                             usage = assemblyForPartsFromShemas.AddOrGetUsage(cavityPart, "m");
                         }
                         
-                        usage.amount = usage.amount + countCore; //usage.amount++;
-                        
-                        // Доп требование Пеленга - Номера позиций Наконечников не выводить в СБ чертеже на выноске от "родительского" изделия. Для вывода таких номеров они будут
-                        // вставлять в СБ чертеж фейковое изделие с RS "Отсутствует" + доп.частью с номером Наконечника и его количеством 0.
-                        if( cavity.GetCavityPartType() == 2) // 2 - это Уплотнители, их номера позиций выводим на общей выноске от "родительского" изделия
-                            usage.addParentID(izdelieID);
-
+                        usage.amount++; //usage.amount + countCore;
                     }
                     catch (Exception e)
                     {
@@ -1177,8 +1140,6 @@ namespace E3_WGM
                             app.PutError(0, $"Наконечник/Уплотнитель {e.Message}", pin.GetId()); // чтобы в самом Е3 быстро найти провод у которого назначена эта cavity
                         }
                     }
-
-
                 }
             }
 
@@ -1394,184 +1355,6 @@ namespace E3_WGM
         }
 
 
-
-
-
-
-/*
-        internal void FindAllWTDocsFromSelectedFolder()
-        {
-            FindDocsRecursive(selectedRootNodeId, null, tempPathForDoc);
-        }
-
-        /// <summary>
-        /// Рекурсивный метод поиска документов.
-        /// Обходит вниз все дерево листов начиная от папки выделенной пользователем.
-        /// </summary>
-        /// <param name="nodeId"></param>
-        /// <param name="parentAssembly"></param>
-        private void FindDocsRecursive(int nodeId, E3Assembly parentAssembly, String tempPathForDoc)
-        {
-            String numberPart;
-            String namePart;
-            E3Assembly assembly = null;
-
-            structureNode.SetId(nodeId);
-
-            if (structureNode.IsLocked() == 1) // если папка в проекте заблокирована, то не обрабатываем включенные в нее объекты.
-                return;
-
-            string typeName = structureNode.GetTypeName();
-            string internName = structureNode.GetInternalName();
-            numberPart = structureNode.GetName();
-
-            if (typeName == "<Assignment>" || typeName == "<Project>" || typeName == "SubProj") // У папки со схемами - .DOCUMENT_TYPE
-            { // тут каждую папку дерева листов превращаем в Сборочную единицу (СЧ).
-
-                bool hasAttribute = structureNode.HasAttribute("Naimen_izdel") == 1 ? true : false;
-                namePart = hasAttribute ? structureNode.GetAttributeValue("Naimen_izdel") : "Наименование пока не известно";
-
-                if (parentAssembly == null)
-                {
-                    assembly = umens_e3project; //  umens_e3project уже настроен (заданы number и name) на выделенную пользователем папку
-                }
-                else if (parentAssembly != null)
-                {
-                    assembly = (E3Assembly)umens_e3project.Parts.Find(x => x.number == numberPart); // эта сборка уже тоже создана и занесена в Parts
-                }
-
-                // Получаем дочерние узлы
-                dynamic childNodeIds = null;
-                int childCount = structureNode.GetStructureNodeIds(ref childNodeIds);
-
-                for (int i = 1; i <= childCount; i++)
-                {
-                    int childNodeId = childNodeIds[i];
-                    FindDocsRecursive(childNodeId, assembly, tempPathForDoc);
-                }
-            }
-            else
-            {   // дошли до папки Тип документа (.DOCUMENT_TYPE) в нее уже вложены схемы              
-                string docType = "", docTypeSuff = "", calculatedTypeSuff = "", docNumber = "", docName = "", docFormat = "";
-
-                numberPart = parentAssembly.number;
-
-                dynamic sAllSheetIds = null;
-                int nAllSheet = structureNode.GetSheetIds(ref sAllSheetIds);
-
-                for (int i = 1; i <= nAllSheet; i++)
-                {
-                    sheet.SetId(sAllSheetIds[i]); // sheet.IsEmbedded() == 1 это листы области чертежа внутри формбоард
-
-                    //  Все значения должны быть заданы в свойствах листа !!! иначе выдавать ошибку !
-                    if (sheet.IsEmbedded() == 0)
-                    {
-                        docType = sheet.GetAttributeValue(AttrsName.getAttrsName("docType"));
-                        docType = docType.Replace("\r\n", "");
-
-
-                        // Проверка КК на то, что в параметрах листа Тип документа соответствует Шифру документа
-                        calculatedTypeSuff = calcDocTypeSuffix(docType, sheet);
-                        docTypeSuff = sheet.GetAttributeValue(AttrsName.getAttrsName("docTypeSuff")); 
-                        if( String.IsNullOrEmpty(calculatedTypeSuff) || !calculatedTypeSuff.Equals(docTypeSuff))
-                        {
-                            if (!errorMessages.Contains($"{numberPart} {docType} 'Шифр документа' не заполнен или не соответствует 'Виду документа'"))
-                            {
-                                errorMessages.Add($"{numberPart} {docType} 'Шифр документа' не заполнен или не соответствует 'Виду документа'");
-                            }
-
-                        }
-
-
-
-                        docNumber = numberPart + docTypeSuff; // именно без пробела.                        
-                        docFormat = sheet.GetAttributeValue(AttrsName.getAttrsName("docFormat"));
-                        docFormat = docFormat.Replace("А", "A"); // на всякий случай русскую "А" меняем на английскую
-                        docFormat = docFormat.Replace("х", "x"); // на всякий случай
-
-                        docName = parentAssembly.name; // TODO всегда совпадает ? или читать атрибут листа "Наименование изделия" (он назначен надписи в форматке)
-                    }
-
-
-                    E3Documentation doc;
-                    if (umens_e3project.Docs.Exists(x => x.number.Equals(docNumber)))
-                    {
-                        doc = (E3Documentation)umens_e3project.Docs.Find(x => x.number.Equals(docNumber));
-                    }
-                    else
-                    {
-                        doc = new E3Documentation(parentAssembly, docNumber, docName, job, docNumber, docType, tempPathForDoc); // job.GetPath()
-                        umens_e3project.Docs.Add(doc);
-                    }
-
-                    doc.AddSheet( sheet, docFormat);
-                }
-            }
-        }
-
-        /// <summary>
-        /// По типу документа определяю его суффикс.
-        /// </summary>
-        /// <param name="docType"></param>
-        /// <param name="sheet"></param>
-        /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
-        private string calcDocTypeSuffix( string docType, e3Sheet sheet)
-        {
-            String docSuff = "";
-            typeDocuments.TryGetValue( docType, out docSuff);
-
-            return docSuff;
-        }
-*/
-
-
-
-        private void calcDocData(e3StructureNode structureNode)
-        {
-            string docType = "", docTypeSuff = "", docNumber = "", docName = "", docFormat = "";
-
-            docType = structureNode.GetAttributeValue("MZKT_DOCUMENTTYPE");
-            docTypeSuff = structureNode.GetAttributeValue("MZKT_DOCUMENTCODE");
-            docName = structureNode.GetAttributeValue("MZKT_DOCUMENTNAME");
-            docNumber = structureNode.GetName(); //TODO именно без пробела.                        
-
-            dynamic sAllSheetIds = null;
-            int nAllSheet = structureNode.GetSheetIds(ref sAllSheetIds);
-
-            for (int i = 1; i <= nAllSheet; i++)
-            {
-                sheet.SetId(sAllSheetIds[i]); // sheet.IsEmbedded() == 1 это листы области чертежа внутри формбоард
-                
-                if (sheet.IsEmbedded() == 0)
-                {
-
-                    docFormat = "A8"; //sheet.GetAttributeValue(AttrsName.getAttrsName("docFormat"));
-                    docFormat = docFormat.Replace("А", "A"); // на всякий случай русскую "А" меняем на английскую
-                    docFormat = docFormat.Replace("х", "x"); // на всякий случай
-                }
-
-
-                E3Documentation doc;
-                if (umens_e3project.Docs.Exists(x => x.number.Equals(docNumber)))
-                {
-                    doc = (E3Documentation)umens_e3project.Docs.Find(x => x.number.Equals(docNumber));
-                }
-                else
-                {
-                    doc = new E3Documentation(umens_e3project, docNumber, docName, job, docNumber, docType, tempPathForDoc); // job.GetPath()
-                    umens_e3project.Docs.Add(doc);
-                }
-
-                doc.AddSheet(sheet, docFormat);
-            }
-        }
-
-
-
-
-
-
         /////////////////// Технологические методы /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         /// <summary>
@@ -1638,7 +1421,7 @@ namespace E3_WGM
                 DataContractJsonSerializer ser2 = new DataContractJsonSerializer(typeof(E3Assembly), settings);
                 E3Assembly assmWch = (E3Assembly)ser2.ReadObject(stream2);
                 assm.merge( assmWch, errorMessages, job); // в подметоде наполняется список ошибок, формируется значение атрибута "суммарная позиция"
-                fillPinAttrsByLineNumber( assmWch);
+                //нет в ТЗ МЗКТ fillPinAttrsByLineNumber( assmWch);
             }
             catch (Exception ex)
             {
@@ -1646,6 +1429,8 @@ namespace E3_WGM
             }
         }
 
+
+/* Нет в ТЗ МЗКТ
         /// <summary>
         /// Заполняет у контактов(выводов) изделий атрибуты "Позиция наконечника" и "Позиция уплотнителя" значением номера позиции наконечника или уплотнителя в спецификации
         /// </summary>
@@ -1683,6 +1468,7 @@ namespace E3_WGM
 
             }
         }
+*/
 
 
         /// <summary>
@@ -2065,5 +1851,6 @@ namespace E3_WGM
                 tempPathForDoc = job.GetPath();
             }
         }
+
     }
 }

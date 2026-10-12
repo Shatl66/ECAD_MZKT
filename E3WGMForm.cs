@@ -121,7 +121,7 @@ namespace E3_WGM
             _Utils.dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>();
 
 
-            if (_Utils.FindAllWTPartsFromSelectedFolder())
+            if (_Utils.FindAllObjectsFromSelectedFolder())
             {
                 _Utils.SyncronizeE3ProjectDataWithWindchill();
                 //_Utils.FindAllWTDocsFromSelectedFolder(); // выбранная пользователем папка в дереве листов уже проверена и определена (selectedRootNodeId) в методе выше            
