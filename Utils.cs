@@ -798,7 +798,7 @@ namespace E3_WGM
                     int countCore = pinIzdelie.GetCoreIds( ref sCoreIds);
                     
                     // Задача 2
-                    AddCavityOfCable(pinIzdelie, devIzdelie.GetId(), countCore);
+                    AddCavityOfPin(pinIzdelie, devIzdelie.GetId(), countCore);
 
 
                     // Задача 1
@@ -1040,6 +1040,10 @@ namespace E3_WGM
         private E3Cable GetOrCreateCable(e3Device dev)
         {
             String number = dev.GetAttributeValue("WCH_number");
+            if (String.IsNullOrEmpty(number)) // если кабель не из windchill
+            {
+                number = dev.GetComponentName(); // фейковый номер нужен для идентификации кабеля, только чтобы выдать о нем предупреждающее сообщение
+            }
 
             try
             {
@@ -1048,7 +1052,7 @@ namespace E3_WGM
                 if (!umens_e3project.Parts.Exists(x => (x is E3Cable) &&
                                        ((x as E3Cable).number == number)))                                       
                 {
-                    cable = new E3Cable( dev);
+                    cable = new E3Cable( dev, number);
                     umens_e3project.Parts.Add(cable);
                     // "Кабель добавлен"
                 }
@@ -1076,7 +1080,7 @@ namespace E3_WGM
         /// <param name="pin">Пин изделия</param>
         /// <param name="izdelieID">Само изделие. Номер позиции Сavity должен выводиться на выноске в СБ чертеже от этого изделия</param>
         /// <param name="countCore">число проводов подключенных к пину изделия. На Пеленге число cavity объектов считается от проводов, а не от числа контактов изделия.</param>
-        private void AddCavityOfCable( e3Pin pin, int izdelieID, int countCore)
+        private void AddCavityOfPin( e3Pin pin, int izdelieID, int countCore)
         {
             e3CavityPart cavity = job.CreateCavityPartObject();
             e3Component comp = job.CreateComponentObject(); // Компонент это объект в БД
@@ -1131,6 +1135,7 @@ namespace E3_WGM
                         }
                         
                         usage.amount++; //usage.amount + countCore;
+                        usage.addParentID(izdelieID);
                     }
                     catch (Exception e)
                     {
@@ -1226,7 +1231,7 @@ namespace E3_WGM
                 String numberAddPart = "";
                 double amountAddPart = 1.0;
                 e3Attribute attribute = job.CreateAttributeObject();
-                bool necesseryValue = false;
+                //bool necesseryValue = false;
                 List<string> listReplacementsAddPart = new List<string>(); // список для взаимозамен в 150% BOM
 
                 if (!E3WGMForm.wchHTTPClient.isAuthorization())
@@ -1242,13 +1247,14 @@ namespace E3_WGM
 
 
                 // Придумка Пеленга о 150% BOM. Проверяем их признак, т.е. в ЭСИ будет несколько записей с 0 количеством и ЕИ "По необходимости" 
-                necesseryValue = dev.GetAttributeValue("IfNecessary") == "1" ? true : false;
+                //necesseryValue = dev.GetAttributeValue("IfNecessary") == "1" ? true : false;
 
 
                 dynamic attributeIds = null;
                 int nAllValues = dev.GetAttributeIds(ref attributeIds, "AdditionalPart");
 
                 // 1-ый проход если это придумка Пеленга о 150% BOM
+                /*
                 if (necesseryValue == true) 
                 { 
                     for (int i = 1; i <= nAllValues; i++) // Накапливаем список для построения взаимозамен между доп. частями
@@ -1260,7 +1266,7 @@ namespace E3_WGM
                         listReplacementsAddPart.Add(numberAddPart);
                     }
                 }
-
+                */
 
                 // 2-ой проход
                 for (int i = 1; i <= nAllValues; i++) // считываем по очереди все значения многозначного атрибута "AdditionalPart"
@@ -1274,8 +1280,8 @@ namespace E3_WGM
                         {
                             ParseValueAttr(valueAttr, out numberAddPart, out amountAddPart);
                             
-                            if (necesseryValue == true)
-                                amountAddPart = 0;
+                            //if (necesseryValue == true)
+                              //  amountAddPart = 0;
                         }
                         catch (Exception ex)
                         {
@@ -1322,6 +1328,7 @@ namespace E3_WGM
                             usage.amount = usage.amount + deltaAmountHostDevice * amountAddPart;
                             usage.addParentID(dev.GetId());
 
+                            /*
                             if (necesseryValue == true)
                             {
                                 foreach ( String replNumber in listReplacementsAddPart)
@@ -1330,6 +1337,7 @@ namespace E3_WGM
                                         usage.Replacements.Add(replNumber);
                                 }                                
                             }
+                            */
 
                         }
                         catch (Exception e)

@@ -73,14 +73,11 @@ namespace E3_WGM
         /// Создание кабеля
         /// </summary>
         /// <param name="dev"></param>
-        public E3Cable(e3Device dev)
+        public E3Cable(e3Device dev, string wch_number)
         {
             //IDs.Add(dev.GetId());
-
-            // ATR_E3_ENTRY - TODO Что сюда выводить из атрибутов компонента или изделия ?
-            // ATR_E3_WIRETYPE - TODO Что сюда выводить из атрибутов компонента или изделия ?
             oidMaster = dev.GetAttributeValue("WCH_id");
-            number = dev.GetAttributeValue("WCH_number");
+            number = wch_number; // dev.GetAttributeValue("WCH_number");
             name = dev.GetAttributeValue("WCH_name");
             ATR_BOM_RS = dev.GetAttributeValue(AttrsName.getAttrsName("atrBomRs"));
         }

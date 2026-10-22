@@ -139,7 +139,7 @@
             this.Controls.Add(this.e3CommonControl1);
             this.Controls.Add(this.E3Log);
             this.Name = "E3WGMForm";
-            this.Text = "ECAD WGM  (Версия от 12.10.26)";
+            this.Text = "ECAD WGM  (Версия от 22.10.26)";
             this.Load += new System.EventHandler(this.E3WGMForm_Load);
             this.tabControl1.ResumeLayout(false);
             this.tabPageProject.ResumeLayout(false);
