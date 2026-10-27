@@ -589,7 +589,7 @@ namespace E3_WGM
 
                 if (isFoundInPartsInIDs == false)
                 {
-                    AddReplacements(dev, usage);
+                    AddReplacements(dev, usage, null);
                     AddAdditionalParts(dev, assemblyForPartsFromShemas, deltaAmount);
                     ProcessPins(dev);
                 }
@@ -891,19 +891,7 @@ namespace E3_WGM
                     usage.AddAmount(amount);
                     usage.addID(pin.GetId());
 
-                    // 1. пункт 33 доп. требований
-                    double pinLT = amount + tolerance;
-                    pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
-                }
-                else
-                {
-                    // 2. пункт 33 доп. требований
-                    if (tolerance > 0)
-                    {
-                        double pinLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
-                        pinLT = pinLT + tolerance; // суммируем допуски
-                        pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
-                    }
+                    AddReplacements(null, usage, pin);
                 }
             }
             catch (Exception ex)
@@ -926,25 +914,7 @@ namespace E3_WGM
                     cable.IDs.Add( pin.GetId()); // !!! в IDs кабеля заношу как Id самого кабеля, так и ID его жил !!!
 
                     amount = calculateLenghtWire( pin);
-
-                    // 1. пункт 33 доп. требований
-                    //double pinLT = amount + tolerance;
-                    //pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
-                    //double testLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
-
                 }
-                else
-                {
-                    // 2. пункт 33 доп. требований
-                    //if (tolerance > 0)
-                    //{
-                      //  double pinLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
-                      //  pinLT = pinLT + tolerance; // суммируем допуски
-                      //  pin.SetAttributeValue("LengthTolerance", pinLT.ToString().Replace(',', '.'));
-                      //  double testLT = Double.Parse(pin.GetAttributeValue("LengthTolerance").Replace('.', ','));
-                    //}
-                }
-
 
                 // 2. Проверяем обработали ли мы уже этот кабель. Длина всего кабеля определяется сразу по длинне 1 жилы
                 if (!cable.IDs.Contains( devCable.GetId()))
@@ -954,6 +924,9 @@ namespace E3_WGM
                     usage.AddAmount(amount);
 
                     usage.addID( devCable.GetId());
+
+                    // 2.2
+                    AddReplacements(devCable, usage, null);
                 }
 
                 // 3. Допуск на длину всего кабеля определяется суммированием допусков назначенных на каждый сегмент сети где проходит кабель.
@@ -1135,7 +1108,7 @@ namespace E3_WGM
                         }
                         
                         usage.amount++; //usage.amount + countCore;
-                        usage.addParentID(izdelieID);
+                        usage.addParentID(izdelieID); // обеспечит занесение номеров позиций cavity объектов в сумм.позицию изелия
                     }
                     catch (Exception e)
                     {
@@ -1155,7 +1128,7 @@ namespace E3_WGM
         /// </summary>
         /// <param name="dev"></param>
         /// <param name="usage"></param>
-        private void AddReplacements(e3Device dev, E3PartUsage usage)
+        private void AddReplacements(e3Device dev, E3PartUsage usage, e3Pin pin)
         {
             try
             {
@@ -1175,7 +1148,13 @@ namespace E3_WGM
 
 
                 dynamic attributeIds = null;
-                int nAllValues = dev.GetAttributeIds(ref attributeIds, "AdditionalReplacement");
+                int nAllValues = 0;
+
+                if( dev != null)
+                    nAllValues = dev.GetAttributeIds(ref attributeIds, "AdditionalReplacement");
+                else
+                    nAllValues = pin.GetAttributeIds(ref attributeIds, "AdditionalReplacement");
+
                 for (int i = 1; i <= nAllValues; i++) // считываем по очереди все значения многозначного атрибута "AdditionalReplacement"
                 {
                     attribute.SetId(attributeIds[i]);
