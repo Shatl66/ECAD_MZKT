@@ -43,6 +43,8 @@ namespace E3_WGM
         private void _treeView_NodeMouseClick(object sender, TreeNodeAdvMouseEventArgs e)
         {
             string numbers = "";
+            int lineNumber = 0;
+            E3PartUsage usageSubst = null;
 
             if (e.Node != null && e.Node.Tag is PartItem partItem)
             {
@@ -50,11 +52,16 @@ namespace E3_WGM
                 if (partItem.Replacements.Count > 0)
                 {
                     List<Part> Parts = E3WGMForm.UtilsInstance.umens_e3project.Parts;
+                    List<E3PartUsage> usages = E3WGMForm.public_umens_e3project.Usages;
 
                     foreach (String numberReplacement in partItem.Replacements) {
                         // у меня в Parts все замены занесены под типом AdditionalPart
                         AdditionalPart replacementPart = (AdditionalPart)Parts.Find(x => (x is AdditionalPart) && (x as AdditionalPart).number == numberReplacement);
-                        numbers = numbers + "\n" + numberReplacement + " " + replacementPart.name;                        
+
+                        usageSubst = usages.Find(x => x.number == numberReplacement);
+                        lineNumber = usageSubst.lineNumber;
+
+                        numbers = numbers + "\n" + lineNumber + "  " + numberReplacement + " " + replacementPart.name;                        
                     }
                     MessageBox.Show(numbers, "Информация о подстановках");
                 }

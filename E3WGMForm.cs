@@ -118,7 +118,7 @@ namespace E3_WGM
             _Utils.errorMessages = new List<string>();
             ///_Utils.numberPartsForE3ProjectDocument = new List<string>();
             _Utils.getWindchillNameContainer();
-            _Utils.dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>();
+            _Utils.dictionaryIdObjsOnSegment = new Dictionary<int, List<int>>();
 
 
             if (_Utils.FindAllObjectsFromSelectedFolder())

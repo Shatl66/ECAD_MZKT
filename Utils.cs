@@ -48,7 +48,7 @@ namespace E3_WGM
         public List<int> pinIDsSeal = new List<int>(); // перечень ID пинов изделий у которых есть cavity объекты типа Уплотнитель
         public Dictionary<string, List<int>> pairesNumberSealCavityToPinIDs = new Dictionary<string, List<int>>(); //пары: обозначение Уплотнителя - ID пинов где назначен Уплотнитель
 
-        public Dictionary<int, List<int>> dictionaryIdDevsOnSegment = new Dictionary<int, List<int>>(); // пары: ID сегмента - ID изделий лежащих/проходящих на/через сегмент
+        public Dictionary<int, List<int>> dictionaryIdObjsOnSegment = new Dictionary<int, List<int>>(); // пары: ID сегмента - ID изделий лежащих/проходящих на/через сегмент
 
         public Utils()
         {
@@ -365,7 +365,7 @@ namespace E3_WGM
 
 
                     List<int> listWireAndDevIds = new List<int>();
-                    dictionaryIdDevsOnSegment.Add(netSegmentId, listWireAndDevIds);
+                    dictionaryIdObjsOnSegment.Add(netSegmentId, listWireAndDevIds);
 
                     // 2.1 Обрабатываем жилы проходящие через сегмент. Учитываем, что одна и таже жила может проходить через несколько сегментов
                     dynamic sAllCoreIds = null;
@@ -382,11 +382,11 @@ namespace E3_WGM
                         if(dev.IsCable() == 1 & dev.IsOverbraid() == 0) // отбросили искуственный Кабель "Провода", где dev.IsOverbraid() тоже 1
                         {
                             ProcessCable(dev, pin, tolerance, netSegmentId); // обрабатываем кабель
-                            listWireAndDevIds.Add(devId);
+                            // в таблицу listWireAndDevIds.Add(devId);
                         }
                         else {
                             ProcessCore(pin, tolerance, netSegmentId); // обрабатываем одиночный провод.
-                            listWireAndDevIds.Add(pinId);
+                            // в таблицу listWireAndDevIds.Add(pinId);
                         }
 
                     }
@@ -1153,7 +1153,7 @@ namespace E3_WGM
                 if( dev != null)
                     nAllValues = dev.GetAttributeIds(ref attributeIds, "AdditionalReplacement");
                 else
-                    nAllValues = pin.GetAttributeIds(ref attributeIds, "AdditionalReplacement");
+                    nAllValues = pin.GetAttributeIds(ref attributeIds, "AdditionalReplacement"); // у проводов
 
                 for (int i = 1; i <= nAllValues; i++) // считываем по очереди все значения многозначного атрибута "AdditionalReplacement"
                 {
@@ -1169,16 +1169,29 @@ namespace E3_WGM
                         {
                             AdditionalPart replacementPart = new AdditionalPart(); //TODO использую пока тип AdditionalPart() не по назначению
                             replacementPart.number = numberReplacement;
-                            
+
                             synchronizationAdditionalPartWithWindchill(replacementPart); //TODO Я пока использую чисто для проверки наличия такой СЧ в Windchill 
                             usage.Replacements.Add(numberReplacement);
 
                             if (!umens_e3project.Parts.Exists(x => x.number == numberReplacement))
                             {
+                                replacementPart.isForBOM = false;
                                 umens_e3project.Parts.Add(replacementPart);
                             }
 
 
+                            E3PartUsage usageReplacement = null; // нужен нам для занесения в него номера позиции из Windchill ( на выноске "17 или 18")
+
+                            if (!replacementPart.ATR_BOM_RS.Equals("МАТЕРИАЛЫ"))
+                            {
+                                usageReplacement = assemblyForPartsFromShemas.AddOrGetUsage(replacementPart, "ea");
+                            }
+                            else
+                            {
+                                usageReplacement = assemblyForPartsFromShemas.AddOrGetUsage(replacementPart, "m");
+                            }
+
+                            usageReplacement.isForBOM = false;
                         }
                         catch (Exception e)
                         {
@@ -1211,7 +1224,7 @@ namespace E3_WGM
                 double amountAddPart = 1.0;
                 e3Attribute attribute = job.CreateAttributeObject();
                 //bool necesseryValue = false;
-                List<string> listReplacementsAddPart = new List<string>(); // список для взаимозамен в 150% BOM
+                //List<string> listReplacementsAddPart = new List<string>(); // список для взаимозамен в 150% BOM
 
                 if (!E3WGMForm.wchHTTPClient.isAuthorization())
                 {

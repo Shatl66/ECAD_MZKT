@@ -276,38 +276,6 @@ namespace E3_WGM
             _usages = _usages.OrderBy(o => o.number).ToList();
         }
 
-        internal void AddDescribe(string value, string type)
-        {
-            E3PartDescribe describe;
-
-            if (!_describes.Exists(x => x.value == value))
-            {
-                describe = new E3PartDescribe(value, type);
-                _describes.Add(describe);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-
-        }
-
-        internal void AddReference(string value, string type)
-        {
-            E3PartReference reference;
-
-            if (!_references.Exists(x => x.value == value))
-            {
-                reference = new E3PartReference(value, type);
-                _references.Add(reference);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-
-        }
-
 
         /// <summary>
         /// Обновляет у нашей текущей Е3 сборки данные ее связей (все E3PartUsage) данными полученными из Windchill
@@ -335,7 +303,7 @@ namespace E3_WGM
                 }
                 else
                 {
-                    key = wchUsage.number; // У Доп.частей нет ID, т.к. они не расположены как самостоятельные Изделия на СБ чертеже, но обязательно имеют Number 
+                    key = wchUsage.number; // У Доп.частей и Подстановок нет ID, т.к. они не расположены как самостоятельные Изделия на СБ чертеже, но обязательно имеют Number 
                 }
 
                 wchUsagesDict[key] = wchUsage; // добавляем в словарь
@@ -345,8 +313,8 @@ namespace E3_WGM
 
             foreach (E3PartUsage currentE3PartUsage in _usages)
             {
-                if (currentE3PartUsage.isForBOM == false)
-                    continue;
+               // if (currentE3PartUsage.isForBOM == false)
+               //     continue; //TODO не помешает и эти обновлять
 
                 // Создаем ключ для поиска
                 string currentKey;
@@ -360,14 +328,19 @@ namespace E3_WGM
                     currentKey = currentE3PartUsage.number;
                 }
 
-
-
-                // Start. Выполняем проверки качества :
+                
                 if (wchUsagesDict.TryGetValue(currentKey, out E3PartUsage matchingUsageFromWch))
                 {
+                    if (String.IsNullOrEmpty(matchingUsageFromWch.oidMaster) & String.IsNullOrEmpty(matchingUsageFromWch.number))
+                    {
+                        //TODO Это аналог у E3Part "НЕ СПЕЦИФИЦИРУЕТСЯ". Проверять isForBOM == false нельзя т.к. это указано у подстановок
+                        continue;
+                    }
+
                     String obj = !String.IsNullOrEmpty(matchingUsageFromWch.number) ? matchingUsageFromWch.number : matchingUsageFromWch.ATR_E3_ENTRY;
                     Part part = E3WGMForm.UtilsInstance.umens_e3project.Parts.Find(x => x.number == matchingUsageFromWch.number);
 
+                    // Start. Выполняем проверки качества :
                     if (String.IsNullOrEmpty(matchingUsageFromWch.oidMaster))
                     {                        
                         if (!errorMessages.Contains($"Изделие {obj} {part.name} не найдено в Windchill"))
@@ -461,10 +434,33 @@ namespace E3_WGM
                     }
 
 
-                    // 2. Заносим данные в атрибуты
+                    // 2. вычисляем номера позиций подстановок и сортируем данные
+                    
+                    // 2.1 сортировка еще без добавления номеров позиций подстановок
                     tempLineNumber = string.Join(" \r\n", lineNumbers.OrderBy(x => x)); // упорядочивает номера позиций по возрастанию и по правилу Е3, каждый номер должен располагаться строчкой ниже
 
-                    // переходим к Изделию у которого в атрибут "Суммарная позиция" и занесем рассчитанное значение.
+                    // 2.2
+                    string devLineNumberOR = "";
+                    
+                    List<int> lineNumbersSubst = new List<int>();
+                    lineNumbersSubst.Add(devLineNumber);
+
+                    List<String> replacements = currentE3PartUsage.Replacements;
+                    if (replacements.Count > 0)
+                    {
+                        foreach (string numberSubst in replacements)
+                        {
+                            E3PartUsage usageSubst = _usages.Find(x => x.number == numberSubst);
+                            lineNumbersSubst.Add(usageSubst.lineNumber);
+                        }
+
+                        devLineNumberOR = string.Join(" или ", lineNumbersSubst.OrderBy(x => x)); // сортировка позиций внутри ИЛИ
+
+                        // было "1 \r\n 2 \r\n 5"  станет "1 \r\n 2 или 3 или 4 \r\n 5"
+                        tempLineNumber = tempLineNumber.Replace(devLineNumber.ToString(), devLineNumberOR);
+                    }
+
+                    // 3. Заносим данные в атрибуты
                     if (!String.IsNullOrEmpty(currentE3PartUsage.ATR_E3_WIRETYPE)) //TODO с таким не сталкивался, чтобы проводу назначали Доп.части
                     {
                         e3Pin pin = job.CreatePinObject();
@@ -503,7 +499,7 @@ namespace E3_WGM
 
 
             // 1. вычисляем данные для суммарной позиции сегмента
-            Dictionary<int, List<int>> dictionaryIdDevsOnSegment = E3WGMForm.UtilsInstance.dictionaryIdDevsOnSegment;
+            Dictionary<int, List<int>> dictionaryIdDevsOnSegment = E3WGMForm.UtilsInstance.dictionaryIdObjsOnSegment;
 
             foreach (E3PartUsage currentE3PartUsage in _usages)
             {
