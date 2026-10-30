@@ -141,41 +141,5 @@ namespace E3_WGM
             }
             */
         }
-
-        internal void Refresh()
-        {
-
-            MemoryStream stream = new MemoryStream();
-            DataContractJsonSerializerSettings settings = new DataContractJsonSerializerSettings();
-            settings.UseSimpleDictionaryFormat = true;
-            DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(E3Cable), settings);
-            ser.WriteObject(stream, this);
-            stream.Position = 0;
-            StreamReader sr = new StreamReader(stream);
-            string jsonE3Cable = sr.ReadToEnd();
-            jsonE3Cable = "{\"__type\":\"E3Cable:#E3WGM\"," + jsonE3Cable.Substring(1);
-            string jsonE3CableFromWindchill = E3WGMForm.wchHTTPClient.getJSON(jsonE3Cable, "netmarkets/jsp/by/iba/e3/http/findE3Cable.jsp");
-            //string received = SocketClient.SendMessageFromSocket(SocketClient.ipString, 11000, 14, jsonE3Cable);
-            MemoryStream stream2 = new MemoryStream(Encoding.UTF8.GetBytes(jsonE3CableFromWindchill));
-            DataContractJsonSerializer ser2 = new DataContractJsonSerializer(typeof(E3Cable), settings);
-            E3Cable tempE3Cable = (E3Cable)ser2.ReadObject(stream2);
-            if (!String.IsNullOrEmpty(tempE3Cable.oidMaster))
-            {
-                this.merge(tempE3Cable);
-            }
-        }
-
-        internal object[] getDataForRow()
-        {
-            return new Object[] {oidMaster,
-                               //     IDs.ToString(),
-                                    number,
-                                    name,
-                                    ATR_BOM_RS,
-                                    ATR_E3_ENTRY,
-                                    ATR_E3_WIRETYPE/*,
-                                    ATR_E3_CLASS*/ };
-        }
-
     }
 }

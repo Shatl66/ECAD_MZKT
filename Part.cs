@@ -27,14 +27,6 @@ namespace E3_WGM
         }
 
         [DataMember]
-        private bool _wchcheckout = true;
-        public bool wchcheckout
-        {
-            get { return _wchcheckout; }
-            set { _wchcheckout = value; }
-        }
-
-        [DataMember]
         private string _number = "";
         public string number
         {
@@ -89,10 +81,8 @@ namespace E3_WGM
             {
                 this.oidMaster = tempPart.oidMaster;
                 this.oid = tempPart.oid;
-                this.wchcheckout = tempPart.wchcheckout;
             }
                 
-
             this.number = tempPart.number;
             this.name = tempPart.name;
             this.ATR_BOM_RS = tempPart.ATR_BOM_RS;

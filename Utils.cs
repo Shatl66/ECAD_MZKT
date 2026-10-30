@@ -1555,14 +1555,14 @@ namespace E3_WGM
 
             MemoryStream stream2 = new MemoryStream(Encoding.UTF8.GetBytes(received));
             DataContractJsonSerializer ser2 = new DataContractJsonSerializer(typeof(AdditionalPart), settings);
-            Part tempPart = (Part)ser2.ReadObject(stream2);
+            Part wchPart = (Part)ser2.ReadObject(stream2);
 
-            if (String.IsNullOrEmpty(tempPart.oidMaster))
+            if (String.IsNullOrEmpty(wchPart.oidMaster))
             {
                 throw new Exception(additionalPart.number + " не найдена в Windchill");
             }
 
-            additionalPart.merge(tempPart);
+            additionalPart.merge(wchPart);
         }
 
 
