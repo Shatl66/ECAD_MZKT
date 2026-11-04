@@ -491,14 +491,14 @@ namespace E3_WGM
             }
             else if (dev.IsView() == 1)
             {
-                dev.SetId(dev.GetOriginalId());
+                return;
             }
 
 
             e3Component comp = job.CreateComponentObject(); // Компонент это объект в БД
             comp.SetId(dev.GetId());
 
-            Console.WriteLine(dev.GetId() + "\t" + dev.GetName() + "\t" + dev.GetLocation() + "\t" + comp.GetId() + "\t " + comp.GetName());
+            Console.WriteLine(dev.GetId() + "\t" + dev.GetName() + "\t" + comp.GetId() + "\t " + comp.GetName());
 
             if (comp.GetId() == 0) // Удалили компонент из проекта и осталось только устройство и символ на чертеже ?
             {

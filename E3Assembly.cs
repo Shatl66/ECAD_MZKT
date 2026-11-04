@@ -25,6 +25,7 @@ namespace E3_WGM
             get { return _usages; }
             set { }
         }
+        
         [DataMember]
         private List<E3PartDescribe> _describes = new List<E3PartDescribe>();
         internal List<E3PartDescribe> Describes
@@ -32,6 +33,7 @@ namespace E3_WGM
             get { return _describes; }
             set { }
         }
+        
         [DataMember]
         private List<E3PartReference> _references = new List<E3PartReference>();
         internal List<E3PartReference> References
@@ -39,6 +41,16 @@ namespace E3_WGM
             get { return _references; }
             set { }
         }
+
+        [DataMember(Name = "_ecn")]
+        private E3Ecn _ecn = new E3Ecn();
+
+        internal E3Ecn Ecn
+        {
+            get { return _ecn; }
+            set { }
+        }
+
 
         public E3Assembly(String number, string name)
         {
@@ -389,96 +401,84 @@ namespace E3_WGM
         private void updateSumPosInUsages(e3Job job)
         {
             e3Device dev = job.CreateDeviceObject();
-            int devLineNumber = 0;
-            String tempLineNumber;
-            String currentDevRS;
-
+            e3Pin pin = job.CreatePinObject();
+            String sumLineNumber;
+            int objLineNumber = 0;
 
             // 1. вычисляем данные для суммарной позиции
             foreach (E3PartUsage currentE3PartUsage in _usages)
             {
-                //if (currentE3PartUsage.parentIDs.Count > 0 || currentE3PartUsage.netSegmentIds.Count > 0)
-                //    continue; // имеем дело с E3PartUsage Дополнительных частей (доп.части, замены, cavity) или изделиями лежащими на сегменте, а нам нужны Изделия непосредственно расположенные на СБ чертеже от которых будет строиться выноска с номером позиции/й
+                sumLineNumber = "";
+                objLineNumber = 0;
 
-                foreach (int itemId in currentE3PartUsage.IDs) // на СБ чертеже Изделие может встречаться несколько раз (разные Поз.обозначения) и могут быть с RS "Отсутствует"
+                foreach (int itemId in currentE3PartUsage.IDs)
                 {
-                    // сначала очищаем у всех изделий атрибут "суммарная позиция"
-                    dev.SetId(itemId);
-                    dev.SetAttributeValue(AttrsName.getAttrsName("lineNumber"), "");
+                    bool isPin = job.GetItemType(itemId) == 22; // 22 = Wire or Core
+                    dynamic target = isPin ? (dynamic)pin : (dynamic)dev;
 
-                    if (currentE3PartUsage.parentIDs.Count > 0 || currentE3PartUsage.netSegmentIds.Count > 0)
-                        continue; // имеем дело с E3PartUsage Дополнительных частей (доп.части, замены, cavity) или изделиями лежащими на сегменте, а нам нужны Изделия непосредственно расположенные на СБ чертеже от которых будет строиться выноска с номером позиции/й
+                    target.SetId(itemId);
+                    Console.WriteLine($" Test {(isPin ? "pin" : "dev")} " + target.GetName());
 
+                    // очищаем у всех изделий атрибут "суммарная позиция"
+                    target.SetAttributeValue(AttrsName.getAttrsName("lineNumber"), "");
 
-                    tempLineNumber = "";
-                    List<int> lineNumbers = new List<int>();
-                                                            
-                    currentDevRS = dev.GetAttributeValue(AttrsName.getAttrsName("atrBomRs"));
-
-                    //if (currentE3PartUsage.isForBOM == true)
-                    if (!currentDevRS.Equals(BomRSValues.getBomRSValue((int)BomRSEnum.NO))) // т.е. у текущего изделия RS НЕ равен "Отсутствует"
+                    if (isPin == false)
                     {
-                        devLineNumber = currentE3PartUsage.lineNumber;
-                        lineNumbers.Add(devLineNumber); // Запомнили Позицию самого Изделия
+                        if (currentE3PartUsage.parentIDs.Count > 0 || currentE3PartUsage.netSegmentIds.Count > 0)
+                            continue;// имеем дело с E3PartUsage Дополнительных частей (доп.части, замены, cavity) или изделиями лежащими на сегменте, а нам нужны Изделия непосредственно расположенные на СБ чертеже от которых будет строиться выноска с номером позиции/й
                     }
 
-                    foreach (E3PartUsage usageWithParent in _usages) // Ищем E3PartUsage Дополнительных частей у которых Parent-ом является изделие представленное itemId
+                    if (String.IsNullOrEmpty(sumLineNumber)) // sumLineNumber одинаковая для всех currentE3PartUsage.IDs
                     {
-                        if (usageWithParent.parentIDs.Contains(itemId))
+                        var lineNumbers = new List<int>();
+
+                        string currentDevRS = target.GetAttributeValue(AttrsName.getAttrsName("atrBomRs"));
+                        if (!currentDevRS.Equals(BomRSValues.getBomRSValue((int)BomRSEnum.NO)))
                         {
-                            if (!lineNumbers.Contains(usageWithParent.lineNumber))
+                            objLineNumber = currentE3PartUsage.lineNumber;
+                            lineNumbers.Add(objLineNumber); // Запомнили Позицию самого объекта (Изделия или провода)
+                        }
+
+                        foreach (E3PartUsage usageWithParent in _usages) // Ищем E3PartUsage Дополнительных частей у которых Parent-ом является изделие представленное itemId
+                        {
+                            if (usageWithParent.parentIDs.Contains(itemId)
+                                && !lineNumbers.Contains(usageWithParent.lineNumber))
                             {
-                               lineNumbers.Add(usageWithParent.lineNumber); // Добавили Позицию Дополнительной части 
+                                lineNumbers.Add(usageWithParent.lineNumber); // Добавили Позицию Дополнительной части
                             }
                         }
-                    }
 
 
-                    // 2. вычисляем номера позиций подстановок и сортируем данные
-                    
-                    // 2.1 сортировка еще без добавления номеров позиций подстановок
-                    tempLineNumber = string.Join(" \r\n", lineNumbers.OrderBy(x => x)); // упорядочивает номера позиций по возрастанию и по правилу Е3, каждый номер должен располагаться строчкой ниже
+                        // 2. вычисляем номера позиций подстановок и сортируем данные
 
-                    // 2.2
-                    string devLineNumberOR = "";
-                    
-                    List<int> lineNumbersSubst = new List<int>();
-                    lineNumbersSubst.Add(devLineNumber);
+                        // 2.1 сортировка еще без добавления номеров позиций подстановок
+                        sumLineNumber = string.Join(" \r\n", lineNumbers.OrderBy(x => x)); // упорядочивает номера позиций по возрастанию, каждый номер должен располагаться строчкой ниже
 
-                    List<String> replacements = currentE3PartUsage.Replacements;
-                    if (replacements.Count > 0)
-                    {
-                        foreach (string numberSubst in replacements)
+                        // 2.2 — подстановки
+                        var lineNumbersSubst = new List<int> { objLineNumber };
+                        var replacements = currentE3PartUsage.Replacements;
+                        if (replacements.Count > 0)
                         {
-                            E3PartUsage usageSubst = _usages.Find(x => x.number == numberSubst);
-                            lineNumbersSubst.Add(usageSubst.lineNumber);
+                            foreach (string numberSubst in replacements)
+                            {
+                                E3PartUsage usageSubst = _usages.Find(x => x.number == numberSubst);
+                                lineNumbersSubst.Add(usageSubst.lineNumber);
+                            }
+
+                            string devLineNumberOR = string.Join(" или ", lineNumbersSubst.OrderBy(x => x)); // сортировка позиций внутри ИЛИ
+
+                            // было "1 \r\n 2 \r\n 5"  станет "1 \r\n 2 или 3 или 4 \r\n 5"
+                            sumLineNumber = sumLineNumber.Replace(objLineNumber.ToString(), devLineNumberOR);
                         }
-
-                        devLineNumberOR = string.Join(" или ", lineNumbersSubst.OrderBy(x => x)); // сортировка позиций внутри ИЛИ
-
-                        // было "1 \r\n 2 \r\n 5"  станет "1 \r\n 2 или 3 или 4 \r\n 5"
-                        tempLineNumber = tempLineNumber.Replace(devLineNumber.ToString(), devLineNumberOR);
                     }
 
                     // 3. Заносим данные в атрибуты
-                    if (!String.IsNullOrEmpty(currentE3PartUsage.ATR_E3_WIRETYPE)) //TODO с таким не сталкивался, чтобы проводу назначали Доп.части
-                    {
-                        e3Pin pin = job.CreatePinObject();
-                        pin.SetId(itemId);
-                        pin.SetAttributeValue("BOMpos", devLineNumber.ToString()); //TODO это "Позиция спецификации". Надо ли вообще => добавить в attrsname.json
-                        pin.SetAttributeValue(AttrsName.getAttrsName("lineNumber"), tempLineNumber);
-                    }
-                    else
-                    {
-                        //e3Device dev = job.CreateDeviceObject();
-                        //dev.SetId(itemId);
-                        dev.SetAttributeValue("BOMpos", devLineNumber.ToString()); //TODO это "Позиция спецификации". Надо ли вообще => добавить в attrsname.json
-                        dev.SetAttributeValue(AttrsName.getAttrsName("lineNumber"), tempLineNumber); // В Е3 у "родительского" компонента будет выведена общая выноска с позициями 
-                    }
+                    target.SetAttributeValue("BOMpos", objLineNumber.ToString());//TODO это "Позиция спецификации". Надо ли вообще => добавить в attrsname.json
+                    target.SetAttributeValue(AttrsName.getAttrsName("lineNumber"), sumLineNumber);// В Е3 у "родительского" компонента будет выведена общая выноска с позициями
                 }
             }
-
         }
+
 
         /// <summary>
         /// Заполняем атрибут "Суммарная позиция" у сегмента.

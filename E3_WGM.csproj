@@ -76,6 +76,7 @@
       <DependentUpon>E3DocListBrowser.cs</DependentUpon>
     </Compile>
     <Compile Include="E3Documentation.cs" />
+    <Compile Include="E3Ecn.cs" />
     <Compile Include="E3GeneralCable.cs" />
     <Compile Include="E3Part.cs" />
     <Compile Include="E3PartDescribe.cs" />
