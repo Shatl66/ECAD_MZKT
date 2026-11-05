@@ -413,7 +413,8 @@ namespace E3_WGM
 
                 foreach (int itemId in currentE3PartUsage.IDs)
                 {
-                    bool isPin = job.GetItemType(itemId) == 22; // 22 = Wire or Core
+                    int type = job.GetItemType(itemId); // 22 = Wire or Core, 10 = Device, 20 = Cable
+                    bool isPin = type == 22; 
                     dynamic target = isPin ? (dynamic)pin : (dynamic)dev;
 
                     target.SetId(itemId);
@@ -422,7 +423,7 @@ namespace E3_WGM
                     // очищаем у всех изделий атрибут "суммарная позиция"
                     target.SetAttributeValue(AttrsName.getAttrsName("lineNumber"), "");
 
-                    if (isPin == false)
+                    if (type == 10) // у проводов и кабелей по прежнему заполняю .netSegmentIds - может пригодится ?
                     {
                         if (currentE3PartUsage.parentIDs.Count > 0 || currentE3PartUsage.netSegmentIds.Count > 0)
                             continue;// имеем дело с E3PartUsage Дополнительных частей (доп.части, замены, cavity) или изделиями лежащими на сегменте, а нам нужны Изделия непосредственно расположенные на СБ чертеже от которых будет строиться выноска с номером позиции/й
